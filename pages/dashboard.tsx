@@ -69,7 +69,9 @@ function Transactions(props) {
     const response = await fetch(cacheUrl);
     const data = await response.json();
     const transactions = data.data as Transaction[];
-    console.info(`Fetched ${transactions.length} transactions`);
+    console.info(
+      `Fetched ${transactions.length} transactions from ${cacheUrl}`
+    );
     const d = getNodesAndLinks(transactions);
     setData(d);
   };
@@ -84,9 +86,11 @@ function Transactions(props) {
   );
 }
 Transactions.getInitialProps = async ({ query }) => {
-  const limit = parseInt(query.limit) ?? 300000;
-  const offset = parseInt(query.offset) ?? undefined;
-  const blockOffset = parseInt(query.blockOffset) ?? undefined;
+  const limit = query?.limit ? parseInt(query.limit) : 300000;
+  const offset = query?.offset ? parseInt(query.offset) : undefined;
+  const blockOffset = query?.blockOffset
+    ? parseInt(query.blockOffset)
+    : undefined;
   const props = { limit, offset, blockOffset };
   return props;
 };
