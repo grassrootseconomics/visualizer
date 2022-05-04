@@ -5,20 +5,24 @@ export const getCacheUrl = (address: string, limit = 16000, offset = 0) => {
   return url;
 };
 
-export const getAllCacheUrl = ({ limit, offset, blockOffset }) => {
+export const getAllCacheUrl = (options?: {
+  limit?: number;
+  offset?: number;
+  blockOffset?: number;
+}): string => {
   let url = cacheUrl;
-  if (limit) {
-    url = url + `/${limit}`;
+  if (options?.limit) {
+    url = url + `/${options.limit}`;
   } else {
     return url;
   }
-  if (offset != null) {
-    url = url + `/${offset}`;
+  if (options?.offset != null) {
+    url = url + `/${options.offset}`;
   } else {
     return url;
   }
-  if (blockOffset) {
-    url = url + `/${blockOffset}`;
+  if (options?.blockOffset) {
+    url = url + `/${options?.blockOffset}`;
   } else {
     return url;
   }

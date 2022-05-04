@@ -115,6 +115,7 @@ function Transactions({ query }) {
 
   const tokensToSelect = [...tokens.values()];
   tokensToSelect.push(AllTokensFilterItem);
+  // TODO Break this out to Inputs/Filter
   const buildInputs = (
     <div className="flex">
       <input
