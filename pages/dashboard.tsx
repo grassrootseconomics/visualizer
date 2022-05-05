@@ -1,57 +1,10 @@
 import { NetworkGraph } from "@components/network-graph";
+import { getNodesAndLinks } from "@utils/render_graph";
 import { useCache } from "hooks/useCache";
-import { Transaction } from "models/Transaction";
 import React from "react";
 
-const faucets = [
-  "cd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
-  "59a5E2fAF8163fE24cA006a221dD0f34c5e0Cb41",
-  "289DeFD53E2D96F05Ba29EbBebD9806C94d04Cb6",
-];
 
-const getNodesAndLinks = (transactions: Transaction[]) => {
-  const addresses = new Set<string>();
-  const links = [];
-  for (const tx of transactions) {
-    if (!faucets.includes(tx.sender) && !faucets.includes(tx.recipient)) {
-      const exsisteingLinkIndex = links.findIndex(
-        (predicate) =>
-          predicate.source === tx.sender && predicate.target === tx.recipient
-      );
-      if (exsisteingLinkIndex === -1) {
-        links.push({
-          source: tx.sender,
-          target: tx.recipient,
-          token: tx.source_token,
-          value: 1,
-        });
-      } else {
-        links[exsisteingLinkIndex].value++;
-      }
 
-      addresses.add(tx.sender);
-      addresses.add(tx.recipient);
-    }
-  }
-  return {
-    links,
-    nodes: [...addresses].map((address) => {
-      return {
-        id: address,
-        group: 1,
-        value: transactions.reduce((acc, v) => {
-          if (v.sender === address) {
-            acc = acc + 1;
-          }
-          if (v.recipient === address) {
-            acc = acc + 1;
-          }
-          return acc;
-        }, 1),
-      };
-    }),
-  };
-};
 
 function Dashboard(props) {
   const { data, error } = useCache({

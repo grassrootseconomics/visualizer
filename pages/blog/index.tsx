@@ -1,9 +1,10 @@
 import { Blog, getAllPosts } from "@utils/extract_meta";
+import { GetStaticProps } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
-export const getStaticProps = async () => {
+export const getStaticProps: GetStaticProps = async (context) => {
   const posts = getAllPosts(false);
   const tags = posts.reduce((tags, p) => {
     p.meta.tags.forEach((t) => tags.add(t.trim()));
@@ -17,7 +18,7 @@ export const getStaticProps = async () => {
   };
 };
 
-function Home(props: { posts: Blog[]; tags: string[] }) {
+function Blog(props: { posts: Blog[]; tags: string[] }) {
   const [selectedTags, setSelectedTags] = React.useState<string[]>([]);
 
   const [posts, setPosts] = React.useState(props.posts);
@@ -101,4 +102,4 @@ function Home(props: { posts: Blog[]; tags: string[] }) {
     </>
   );
 }
-export default Home;
+export default Blog;

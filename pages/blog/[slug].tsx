@@ -1,8 +1,9 @@
 import { getAllPosts, getPost } from "@utils/extract_meta";
+import { GetStaticPaths, GetStaticProps } from "next";
 import { MDXRemote } from "next-mdx-remote";
 import { serialize } from "next-mdx-remote/serialize";
 // import Image from "next/image";
-export const getStaticPaths = async () => {
+export const getStaticPaths: GetStaticPaths = async () => {
   const posts = getAllPosts();
   const paths = posts.map((post) => ({
     params: {
@@ -29,7 +30,7 @@ const components = {
   p: (props) => <p className="text-lg my-4">{props.children}</p>,
 };
 
-export const getStaticProps = async ({ params: { slug } }) => {
+export const getStaticProps: GetStaticProps = async ({ params: { slug } }) => {
   const markdownWithMeta = getPost(slug + ".md", true);
   const mdxSource = await serialize(markdownWithMeta.content);
 
@@ -41,6 +42,7 @@ export const getStaticProps = async ({ params: { slug } }) => {
     },
   };
 };
+// TODO Remove all references to this
 const SITEURL = "http://localhost:3000/";
 const PostPage = ({ meta, mdxSource }) => {
   return (
@@ -74,7 +76,9 @@ const PostPage = ({ meta, mdxSource }) => {
       {/* <!-- End Social Meta Tags --> */}
 
       <div className="px-2 mt-4 max-w-3xl m-auto">
-        <h1 className="text-center text-2xl p-2 mb-3 font-bold">{meta.title}</h1>
+        <h1 className="text-center text-2xl p-2 mb-3 font-bold">
+          {meta.title}
+        </h1>
 
         <MDXRemote {...mdxSource} components={components} />
       </div>

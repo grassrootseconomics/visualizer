@@ -2,7 +2,7 @@ import { getAllCacheUrl, getCacheUrl } from "@utils/cache";
 import { Transaction } from "models/Transaction";
 import useSWR from "swr";
 
-interface UseCacheOptions {
+export interface CacheOptions {
   address?: string;
   limit?: number;
   offset?: number;
@@ -14,7 +14,7 @@ export const fetcher = async (url) => {
   return data?.data;
 };
 
-export const useCache = (options: UseCacheOptions) => {
+export const useCache = (options: CacheOptions) => {
   let url: string;
   if (options.address) {
     url = getCacheUrl(options.address, options.limit, options.offset);
