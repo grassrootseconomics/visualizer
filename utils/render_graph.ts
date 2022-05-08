@@ -112,20 +112,12 @@ export const renderNetworkGraph = (
   const links_domain = d3.extent(links, function (d) {
     return d.value;
   });
-  const weightScaleNodeForce = d3
-    .scalePow()
-    .domain(nodes_domain)
-    .range([20, 50]);
-
-  const weightScaleNodeSize = d3
-    .scalePow()
-    .domain(nodes_domain)
-    .range([2, 100]);
-
-  const weightScale = d3.scalePow().domain(links_domain).range([1, 2]);
-  // Construct the forces.
-  const forceNode = d3.forceManyBody().strength((d) => {
-    return -weightScaleNodeForce((d as Node).value);
+  const nodeChargeScale = d3.scalePow().domain(nodes_domain).range([100, 200]);
+  const nodeSizeScale = d3.scalePow().domain(nodes_domain).range([2, 100]);
+  const linkStrengthScale = d3.scalePow().domain(links_domain).range([1, 2]);
+  
+  const nodeCharge = d3.forceManyBody().strength((d) => {
+    return -nodeChargeScale((d as Node).value);
   });
   const forceLink = d3
     .forceLink(links)
@@ -134,7 +126,7 @@ export const renderNetworkGraph = (
       return d.value * 1;
     })
     .strength((d) => {
-      return weightScale(d.value);
+      return linkStrengthScale(d.value);
     });
   function handleZoom(e: {
     transform:
@@ -158,7 +150,7 @@ export const renderNetworkGraph = (
   const simulation = d3
     .forceSimulation(nodes as any)
     .force("link", forceLink)
-    .force("charge", forceNode)
+    .force("charge", nodeCharge)
     .force("x", d3.forceX())
     .force("y", d3.forceY())
     .on("tick", ticked)
@@ -199,7 +191,7 @@ export const renderNetworkGraph = (
     .selectAll("circle")
     .data(nodes)
     .join("circle")
-    .attr("r", (d) => 2 * weightScaleNodeSize(options.nodeRadius(d)));
+    .attr("r", (d) => 2 * nodeSizeScale(options.nodeRadius(d)));
   if (options.interactive) {
     node.call(drag(simulation) as any).on("click", (d, n: Node) => {
       options.onNodeClick(n);
@@ -259,9 +251,10 @@ export const renderNetworkGraph = (
   return Object.assign(svg.node(), { scales: { color } });
 };
 const faucets = [
-  "cd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
-  "59a5E2fAF8163fE24cA006a221dD0f34c5e0Cb41",
-  "289DeFD53E2D96F05Ba29EbBebD9806C94d04Cb6",
+  // "cd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
+  // "59a5E2fAF8163fE24cA006a221dD0f34c5e0Cb41",
+  // "289DeFD53E2D96F05Ba29EbBebD9806C94d04Cb6",
+  // "cA5DA01B6Dac771c8F3625AA1a8931E7DAC41832"
 ];
 
 export const getNodesAndLinks = (transactions: Transaction[]) => {
