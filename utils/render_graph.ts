@@ -251,9 +251,9 @@ export const renderNetworkGraph = (
   return Object.assign(svg.node(), { scales: { color } });
 };
 const faucets = [
-  // "cd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
-  // "59a5E2fAF8163fE24cA006a221dD0f34c5e0Cb41",
-  // "289DeFD53E2D96F05Ba29EbBebD9806C94d04Cb6",
+  "cd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
+  "59a5E2fAF8163fE24cA006a221dD0f34c5e0Cb41",
+  "289DeFD53E2D96F05Ba29EbBebD9806C94d04Cb6",
   // "cA5DA01B6Dac771c8F3625AA1a8931E7DAC41832"
 ];
 
