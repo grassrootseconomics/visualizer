@@ -1,8 +1,10 @@
 import { Select } from "@components/select";
 import { getAllCacheUrl, getCacheUrl } from "@utils/cache";
 import { getSyncToken } from "hooks/useLocalStorage";
+import { useTransactionFilter } from "hooks/useTransactionFilter";
 import { Token, useWeb3 } from "hooks/useWeb3";
 import { Transaction } from "models/Transaction";
+
 import { useRouter } from "next/router";
 import React from "react";
 const AllTokensFilterItem: Token = {
@@ -12,72 +14,10 @@ const AllTokensFilterItem: Token = {
 };
 function Transactions({ query }) {
   const router = useRouter();
-  const [address, setAddress] = React.useState<string>(query?.address as string);
-  const [limit, setLimit] = React.useState<number>(1000);
-  const [offset, setOffset] = React.useState<number>(0);
-  const [blockOffset, setBlockOffset] = React.useState<number>();
-  const [tokenFilter, setTokenFilter] =
-    React.useState<Token>(AllTokensFilterItem);
+  const txFilter = useTransactionFilter({
+    address: query?.address as string,
+  });
 
-  const [web3, currentBlock, tokens] = useWeb3();
-  React.useEffect(() => {
-    console.log(currentBlock);
-    if (currentBlock !== 0) {
-      setBlockOffset(currentBlock - 10000);
-      // TODO Remove this hack
-      fetchTransactions(currentBlock - 10000);
-    }
-  }, [currentBlock, query?.address]);
-
-  const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-  const [filteredTransactions, setFilteredTransactions] = React.useState<
-    Transaction[]
-  >([]);
-  React.useEffect(() => {
-    setFilteredTransactions(
-      transactions.filter((t) => {
-        if (tokenFilter.address === AllTokensFilterItem.address) {
-          return true;
-        } else {
-          if (`0x${t.source_token}` === tokenFilter.address) {
-            return true;
-          }
-        }
-      })
-    );
-  }, [tokenFilter, transactions]);
-  const fetchTransactions = async (blockOffsetI?: number) => {
-    let url;
-    if (address) {
-      const valid = web3.utils.isAddress(address);
-      const checksumAddress = web3.utils.toChecksumAddress(address);
-
-      if (!valid) {
-        alert("Address is not valid");
-        return;
-      }
-      router.push(`/transactions?address=${checksumAddress}`, undefined, {
-        shallow: true,
-      });
-      url = getCacheUrl(checksumAddress, limit, offset);
-    } else {
-      url = getAllCacheUrl({
-        blockOffset: blockOffsetI ?? blockOffset,
-        limit: limit,
-        offset: offset,
-      });
-    }
-    console.info(`Getting Transactions from: ${url}`);
-
-    const response = await fetch(url);
-    const data = await response.json();
-
-    setTransactions(
-      (data.data as Transaction[]).sort(
-        (a, b) => b.block_number - a.block_number
-      )
-    );
-  };
   const buildTransactions = (
     <table className="table-auto w-full">
       <thead>
@@ -116,7 +56,53 @@ function Transactions({ query }) {
   const tokensToSelect = [...tokens.values()];
   tokensToSelect.push(AllTokensFilterItem);
   // TODO Break this out to Inputs/Filter
-  const buildInputs = (
+  const buildInputs = newFunction(
+    setAddress,
+    address,
+    fetchTransactions,
+    tokenFilter,
+    setTokenFilter,
+    tokensToSelect,
+    setLimit,
+    limit,
+    setOffset,
+    offset,
+    setBlockOffset,
+    blockOffset
+  );
+  return (
+    <div className="container mx-auto sm:px-4 container-contact pb-5">
+      <div className="flex justify-end">
+        <div>
+          <span className="text-gray-400">Current Block</span> {currentBlock}
+        </div>
+      </div>
+      {buildInputs}
+      <div className="p-4">{buildTransactions}</div>
+    </div>
+  );
+}
+
+Transactions.getInitialProps = async ({ query }) => {
+  return { query };
+};
+export default Transactions;
+
+function newFunction(
+  setAddress: React.Dispatch<React.SetStateAction<string>>,
+  address: string,
+  fetchTransactions: (blockOffsetI?: number) => Promise<void>,
+  tokenFilter: Token,
+  setTokenFilter: React.Dispatch<React.SetStateAction<Token>>,
+  tokensToSelect: Token[],
+  setLimit: React.Dispatch<React.SetStateAction<number>>,
+  limit: number,
+  setOffset: React.Dispatch<React.SetStateAction<number>>,
+  offset: number,
+  setBlockOffset: React.Dispatch<React.SetStateAction<number>>,
+  blockOffset: number
+) {
+  return (
     <div className="flex">
       <input
         aria-label="Blockchain Address"
@@ -206,20 +192,4 @@ function Transactions({ query }) {
       </button>
     </div>
   );
-  return (
-    <div className="container mx-auto sm:px-4 container-contact pb-5">
-      <div className="flex justify-end">
-        <div>
-          <span className="text-gray-400">Current Block</span> {currentBlock}
-        </div>
-      </div>
-      {buildInputs}
-      <div className="p-4">{buildTransactions}</div>
-    </div>
-  );
 }
-
-Transactions.getInitialProps = async ({ query }) => {
-  return { query };
-};
-export default Transactions;
