@@ -1,0 +1,90 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model cursors {
+  id                 Int     @id
+  cursor_pos         String  @db.VarChar(64)
+  cursor_description String? @db.VarChar(100)
+}
+
+model meta {
+  id                 Int      @id @default(autoincrement())
+  user_id            Int?
+  preferred_language String?  @db.VarChar(16)
+  gender             String?  @db.VarChar(10)
+  age                Int?
+  given_name         String?  @db.VarChar(32)
+  family_name        String?  @db.VarChar(32)
+  products           String[]
+  location_name      String?  @db.VarChar(32)
+  tags               String[]
+  users              users?   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([location_name(ops: raw("gin_trgm_ops"))], map: "location_name_idx", type: Gin)
+  @@index([gender, preferred_language, age], map: "meta_filter_idx")
+  @@index([tags], map: "tags", type: Gin)
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by the Prisma Client.
+model schema_version {
+  version Int
+
+  @@ignore
+}
+
+model staff {
+  id            Int    @id @default(autoincrement())
+  username      String @unique @db.VarChar(16)
+  password_hash String @db.VarChar(76)
+}
+
+model sys_accounts {
+  id                  Int     @id @default(autoincrement())
+  sys_address         String  @db.VarChar(40)
+  address_description String? @db.VarChar(100)
+
+  @@index([sys_address], map: "sys_address_idx", type: Hash)
+}
+
+model tokens {
+  id             Int    @id @default(autoincrement())
+  token_address  String @db.VarChar(40)
+  token_decimals Int
+  token_name     String @db.VarChar(16)
+  token_symbol   String @db.VarChar(10)
+}
+
+model transactions {
+  id                Int      @id @unique(map: "index_id", sort: Desc) @default(autoincrement())
+  tx_hash           String   @unique @db.VarChar(64)
+  block_number      Int
+  tx_index          Int
+  token_address     String   @db.VarChar(40)
+  sender_address    String   @db.VarChar(40)
+  recipient_address String   @db.VarChar(40)
+  tx_value          BigInt
+  tx_type           String   @db.VarChar(16)
+  date_block        DateTime @db.Timestamp(6)
+  success           Boolean
+
+  tokensId Int
+  @@index([recipient_address], map: "recipient_idx", type: Hash)
+  @@index([sender_address], map: "sender_idx", type: Hash)
+  @@index([token_address], map: "token_idx", type: Hash)
+}
+
+model users {
+  id                 Int      @id @default(autoincrement())
+  phone_number       String   @unique @db.VarChar(16)
+  blockchain_address String   @unique @db.VarChar(40)
+  date_registered    DateTime @db.Timestamp(6)
+  meta               meta[]
+
+  @@index([phone_number], map: "phone_number_idx", type: Hash)
+}
