@@ -4,6 +4,7 @@ import { getNodesAndLinks } from "@utils/render_graph";
 import { InferGetStaticPropsType } from "next";
 
 const faucets = [
+  "cd9fd1e71f684cfb30fa34831ed7ed59f6f77469",
   "289defd53e2d96f05ba29ebbebd9806c94d04cb6", // SARAFU MIGRATOR1
   "59a5e2faf8163fe24ca006a221dd0f34c5e0cb41", // SARAFU MIGRATOR2
   "ca5da01b6dac771c8f3625aa1a8931e7dac41832", // TOKEN DEPLOYER

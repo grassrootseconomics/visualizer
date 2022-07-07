@@ -1,4 +1,4 @@
-name: my_pesa
+name: website
 
 on:
   push:
