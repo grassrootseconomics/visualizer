@@ -1,5 +1,5 @@
 import { getAllPosts, getPost } from "@utils/extract_meta";
-import { GetStaticPaths, GetStaticProps } from "next";
+import { GetStaticPaths, InferGetStaticPropsType } from "next";
 import { MDXRemote } from "next-mdx-remote";
 import { serialize } from "next-mdx-remote/serialize";
 // import Image from "next/image";
@@ -30,7 +30,7 @@ const components = {
   p: (props) => <p className="text-lg my-4">{props.children}</p>,
 };
 
-export const getStaticProps: GetStaticProps = async ({ params: { slug } }) => {
+export const getStaticProps = async ({ params: { slug } }) => {
   const markdownWithMeta = getPost(slug + ".md", true);
   const mdxSource = await serialize(markdownWithMeta.content);
 
@@ -44,7 +44,10 @@ export const getStaticProps: GetStaticProps = async ({ params: { slug } }) => {
 };
 // TODO Remove all references to this
 const SITEURL = "http://localhost:3000/";
-const PostPage = ({ meta, mdxSource }) => {
+const PostPage = ({
+  meta,
+  mdxSource,
+}: InferGetStaticPropsType<typeof getStaticProps>) => {
   return (
     <>
       {/* <!-- Social Meta Tags --> */}
@@ -79,7 +82,14 @@ const PostPage = ({ meta, mdxSource }) => {
         <h1 className="text-center text-2xl p-2 mb-3 font-bold">
           {meta.title}
         </h1>
-
+        <div className="flex justify-between">
+          <p className="text-left text-sm p-2 mb-3 ">
+            By <strong>{meta.authors.join(", ")}</strong>
+          </p>
+          <p className="text-gray-500">
+            {new Date(meta.date).toLocaleString()}
+          </p>
+        </div>
         <MDXRemote {...mdxSource} components={components} />
       </div>
     </>

@@ -1,15 +1,9 @@
+import { Links, Nodes } from "@utils/render_graph";
+
 export namespace Types {
-  export type Node = {
-    id: string;
-  };
-  export type Link = {
-    source: string;
-    target: string;
-    value: string;
-  };
   export type DataObject = {
-    nodes: Node[];
-    links: Link[];
+    nodes: Nodes;
+    links: Links;
   };
   export type CameraPosition = {
     cameraPosition: (

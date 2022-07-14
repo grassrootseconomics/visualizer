@@ -1,4 +1,4 @@
-import { tokens } from "@prisma/client";
+import type { tokens } from "@prisma/client";
 
 const faucets = [
   "0xcd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
@@ -18,7 +18,14 @@ export const getNodesAndLinks = (
   }[]
 ) => {
   const addresses = new Set<string>();
-  const links = [];
+  let links: {
+    token_name: string;
+    token_symbol: string;
+    source: string;
+    target: string;
+    token_address: string;
+    value: number;
+  }[] = [];
   for (const tx of transactions) {
     if (
       !faucets.includes(tx.sender_address) &&
@@ -34,6 +41,9 @@ export const getNodesAndLinks = (
         const token = tokens.find(
           (token) => token.token_address === tx.token_address
         );
+        // if (!token) {
+        //   console.log(`Unknown Token ${tx.token_address}`);
+        // }
         links.push({
           token_name: token?.token_name ?? "Unknown",
           token_symbol: token?.token_symbol ?? "Unknown",
@@ -69,3 +79,8 @@ export const getNodesAndLinks = (
     }),
   };
 };
+export type Nodes = ReturnType<typeof getNodesAndLinks>["nodes"];
+export type Links = ReturnType<typeof getNodesAndLinks>["links"];
+
+export type Node = ReturnType<typeof getNodesAndLinks>["nodes"][0];
+export type Link = ReturnType<typeof getNodesAndLinks>["links"][0];

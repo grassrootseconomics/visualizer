@@ -1,5 +1,6 @@
 import SarafuNetworkGraph from "@components/force-graph/force-graph";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@utils/db";
+
 import { getNodesAndLinks } from "@utils/render_graph";
 import { InferGetStaticPropsType } from "next";
 
@@ -15,8 +16,9 @@ const faucets = [
 // It may be called again, on a serverless function, if
 // revalidation is enabled and a new request comes in
 export const getStaticProps = async () => {
-  const prisma = new PrismaClient();
   const tokensP = prisma.tokens.findMany();
+  const archivedTokensP = prisma.archived_tokens.findMany();
+
   const transactionsP = prisma.transactions.findMany({
     where: {
       success: true,
@@ -41,9 +43,17 @@ export const getStaticProps = async () => {
       token_address: true,
     },
   });
-  const [tokens, transactions] = await Promise.all([tokensP, transactionsP]);
-  const nodes_links = getNodesAndLinks(tokens, transactions);
+  const [tokens, archived_tokens, transactions] = await Promise.all([
+    tokensP,
+    archivedTokensP,
+    transactionsP,
+  ]);
+  console.log(tokens.length, transactions.length);
 
+  const nodes_links = getNodesAndLinks(
+    [...tokens, ...archived_tokens],
+    transactions
+  );
   return {
     props: {
       nodes_links,
@@ -54,7 +64,7 @@ export const getStaticProps = async () => {
 };
 function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
   return (
-    <div className="w-screen h-[90vh] overflow-hidden my-auto">
+    <div className="w-screen h-[100vh] overflow-hidden my-auto">
       {props.nodes_links && <SarafuNetworkGraph data={props.nodes_links} />}
     </div>
   );

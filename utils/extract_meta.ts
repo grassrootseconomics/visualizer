@@ -4,7 +4,7 @@ type Image = {
   href: string;
   alt: string;
 };
-type Meta = {
+export type Meta = {
   title: string;
   authors: string[];
   date: number | null;

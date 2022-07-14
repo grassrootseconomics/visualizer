@@ -7,8 +7,8 @@ const menuItems = [
     href: "/",
   },
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: "Explore",
+    href: "/explore",
   },
   {
     title: "Transactions",
@@ -51,7 +51,6 @@ export default function Nav() {
                     alt="Logo"
                     height={40}
                     width={200}
-
                   />
                 </div>
                 <span className="hidden font-semibold text-gray-400 text-lg">
@@ -62,8 +61,8 @@ export default function Nav() {
             <div className="hidden md:flex items-center space-x-1">
               {menuItems.map((item) => {
                 const active = isActive(item.href)
-                  ? "text-green-500 border-b-4 border-green-500"
-                  : "text-gray-400  hover:text-green-500 transition duration-300";
+                  ? "font-light text-green-500 border-b-2 border-green-500"
+                  : "font-light text-gray-400  hover:text-green-500 transition duration-300";
                 return (
                   <a
                     href={item.href}

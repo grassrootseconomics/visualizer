@@ -56,7 +56,7 @@ model tokens {
   id             Int    @id @default(autoincrement())
   token_address  String @db.VarChar(40)
   token_decimals Int
-  token_name     String @db.VarChar(16)
+  token_name     String @db.VarChar(32)
   token_symbol   String @db.VarChar(10)
 }
 
@@ -73,7 +73,6 @@ model transactions {
   date_block        DateTime @db.Timestamp(6)
   success           Boolean
 
-  tokensId Int
   @@index([recipient_address], map: "recipient_idx", type: Hash)
   @@index([sender_address], map: "sender_idx", type: Hash)
   @@index([token_address], map: "token_idx", type: Hash)
@@ -87,4 +86,12 @@ model users {
   meta               meta[]
 
   @@index([phone_number], map: "phone_number_idx", type: Hash)
+}
+
+model archived_tokens {
+  id             Int    @id @default(autoincrement())
+  token_address  String @unique @db.VarChar(40)
+  token_decimals Int
+  token_name     String @db.VarChar(16)
+  token_symbol   String @db.VarChar(10)
 }
