@@ -1,6 +1,4 @@
 import Head from "next/head";
-import React from "react";
-import Layout from "../components/Layout";
 import "../styles/globals.css";
 
 const MyApp = ({ Component, pageProps }) => {
@@ -35,12 +33,8 @@ const MyApp = ({ Component, pageProps }) => {
         <link rel="shortcut icon" href="/favicon.ico?v=1" />
         <meta name="msapplication-TileColor" content="#00a300" />
         <meta name="theme-color" content="#ffffff" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Nanum+Gothic&amp;display=swap"
-          rel="stylesheet"
-        />
       </Head>
-        <Component {...pageProps} />
+      <Component {...pageProps} />
     </>
   );
 };

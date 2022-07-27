@@ -12,6 +12,7 @@ export const Timeline = ({
           {items.map((item, index) => {
             return (
               <TimelineItem
+                key={index}
                 date={item.date}
                 body={item.body}
                 title={item.title}
@@ -72,7 +73,7 @@ const TimelineItem = ({ title, body, date, position }) => {
     return (
       <div className="flex flex-row w-full">
         <div className="w-1/12  flex justify-center">
-          <TimelineDate date={date}/>
+          <TimelineDate date={date} />
         </div>
         <div className="w-4/12 px-2 py-10 ">
           <TimelineBody title={title} body={body} />
