@@ -49,7 +49,7 @@ const SarafuNetworkGraph = (props: SarafuNetworkGraphProps) => {
       backgroundColor="rgba(0,0,0,0)"
       graphData={dt}
       onNodeClick={handleClick}
-      linkAutoColorBy="token_address"
+      linkAutoColorBy="token_symbol"
     />
   );
 };
