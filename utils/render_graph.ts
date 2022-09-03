@@ -1,4 +1,5 @@
 import type { tokens } from "@prisma/client";
+import { isBefore } from "date-fns";
 
 const faucets = [
   "0xcd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
@@ -7,26 +8,36 @@ const faucets = [
   "0xcA5DA01B6Dac771c8F3625AA1a8931E7DAC41832",
   "0xB8830b647C01433F9492F315ddBFDc35CB3Be6A6",
 ];
-export const getNodesAndLinks = (
-  tokens: tokens[],
+interface NetworkData {
+  tokens: tokens[];
   transactions: {
     recipient_address: string;
     sender_address: string;
     tx_hash: string;
     tx_value: bigint;
     token_address: string;
-  }[]
-) => {
-  const addresses = new Set<string>();
+    date_block: Date;
+  }[];
+}
+
+export const generateGraphData = (network: NetworkData) => {
+  const addresses: {
+    [address: string]: {
+      firstSeen: number;
+      usedVouchers: string[];
+    };
+  } = {};
+
   let links: {
     token_name: string;
     token_symbol: string;
     source: string;
     target: string;
     token_address: string;
+    date: number;
     value: number;
   }[] = [];
-  for (const tx of transactions) {
+  for (const tx of network.transactions) {
     if (
       !faucets.includes(tx.sender_address) &&
       !faucets.includes(tx.recipient_address)
@@ -38,7 +49,7 @@ export const getNodesAndLinks = (
           predicate.token_address === tx.token_address
       );
       if (exsisteingLinkIndex === -1) {
-        const token = tokens.find(
+        const token = network.tokens.find(
           (token) => token.token_address === tx.token_address
         );
         // if (!token) {
@@ -50,23 +61,28 @@ export const getNodesAndLinks = (
           source: tx.sender_address,
           target: tx.recipient_address,
           token_address: tx.token_address,
+          date: tx.date_block.getTime(),
           value: 1,
         });
       } else {
         links[exsisteingLinkIndex].value++;
+        if (isBefore(tx.date_block, links[exsisteingLinkIndex].date)) {
+          links[exsisteingLinkIndex].date = tx.date_block.getTime();
+        }
       }
-
-      addresses.add(tx.sender_address);
-      addresses.add(tx.recipient_address);
+      addAddress(addresses, tx, tx.sender_address);
+      addAddress(addresses, tx, tx.recipient_address);
     }
   }
   return {
     links,
-    nodes: [...addresses].map((address) => {
+    nodes: Object.keys(addresses).map((address) => {
       return {
         id: address,
         group: 1,
-        value: transactions.reduce((acc, v) => {
+        date: addresses[address].firstSeen,
+        usedVouchers: addresses[address].usedVouchers,
+        value: network.transactions.reduce((acc, v) => {
           if (v.sender_address === address) {
             acc = acc + 1;
           }
@@ -79,8 +95,41 @@ export const getNodesAndLinks = (
     }),
   };
 };
-export type Nodes = ReturnType<typeof getNodesAndLinks>["nodes"];
-export type Links = ReturnType<typeof getNodesAndLinks>["links"];
+export type GraphData = {
+  links: Links;
+  nodes: Nodes;
+};
+export type Nodes = ReturnType<typeof generateGraphData>["nodes"];
+export type Links = ReturnType<typeof generateGraphData>["links"];
 
-export type Node = ReturnType<typeof getNodesAndLinks>["nodes"][0];
-export type Link = ReturnType<typeof getNodesAndLinks>["links"][0];
+export type Node = ReturnType<typeof generateGraphData>["nodes"][0];
+export type Link = ReturnType<typeof generateGraphData>["links"][0];
+
+function addAddress(
+  addresses: { [address: string]: { firstSeen: number; usedVouchers: string[] } },
+  tx: {
+    recipient_address: string;
+    sender_address: string;
+    tx_hash: string;
+    tx_value: bigint;
+    token_address: string;
+    date_block: Date;
+  },
+  address: string
+) {
+  if (!addresses[address]) {
+    addresses[address] = {
+      firstSeen: tx.date_block.getTime(),
+      usedVouchers: [tx.token_address],
+    };
+  } else {
+    // First Seen
+    if (isBefore(tx.date_block, addresses[address].firstSeen)) {
+      addresses[address].firstSeen = tx.date_block.getTime();
+    }
+    // Used Tokens
+    if (!addresses[address].usedVouchers.includes(tx.token_address)) {
+      addresses[address].usedVouchers.push(tx.token_address);
+    }
+  }
+}
