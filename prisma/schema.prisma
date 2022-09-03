@@ -61,7 +61,7 @@ model tokens {
 }
 
 model transactions {
-  id                Int      @id @unique(map: "index_id", sort: Desc) @default(autoincrement())
+  id                Int      @id @unique(sort: Desc, map: "index_id") @default(autoincrement())
   tx_hash           String   @unique @db.VarChar(64)
   block_number      Int
   tx_index          Int
