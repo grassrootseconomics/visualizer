@@ -102,8 +102,8 @@ export type GraphData = {
 export type Nodes = ReturnType<typeof generateGraphData>["nodes"];
 export type Links = ReturnType<typeof generateGraphData>["links"];
 
-export type Node = ReturnType<typeof generateGraphData>["nodes"][0];
-export type Link = ReturnType<typeof generateGraphData>["links"][0];
+export type Node = Nodes[0];
+export type Link = Links[0];
 
 function addAddress(
   addresses: { [address: string]: { firstSeen: number; usedVouchers: string[] } },
