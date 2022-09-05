@@ -13,3 +13,12 @@
     @apply text-lg;
   }
 }
+.btn {
+  @apply text-white bg-green-600 px-2 rounded font-semibold;
+}
+.btn:hover {
+  @apply bg-green-800;
+}
+.btn:disabled {
+  @apply bg-green-800;
+}
