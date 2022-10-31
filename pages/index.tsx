@@ -62,18 +62,18 @@ export const getStaticProps = async () => {
     props: {
       graphData: graphData,
       tokens,
+      lastUpdate: Date.now(),
     },
     revalidate: 60 * 60 * 6, // In seconds
   };
 };
 const now = new Date();
-let timerId;
 
 function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
   const [selectedTokens, setSelectedTokens] = React.useState(props.tokens);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [filteredByToken, setFilteredByToken] = React.useState(props.graphData);
-  const [graphType, setGraphType] = React.useState<"2D" | "3D">("2D");
+  const [graphType, setGraphType] = React.useState<"2D" | "3D">("3D");
 
   const [animate, setAnimate] = React.useState<Boolean>(false);
   const [date, setDate] = React.useState(now.getTime());
@@ -104,7 +104,7 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
       end: newGraphData.links.reduce((acc, e) => Math.max(acc, e.date), date),
     });
     setFilteredByToken(newGraphData);
-  }, [selectedTokens]);
+  }, [date, props.graphData.links, props.graphData.nodes, selectedTokens]);
 
   React.useEffect(() => {
     if (animate) {
@@ -143,7 +143,8 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
         viewBox="0 0 24 24"
         strokeWidth={1.5}
         stroke="white"
-        className="w-6 h-6 absolute bottom-0 right-0 m-4"
+        className="w-6 h-6 absolute bottom-0 right-0 m-4 z-10 cursor-pointer"
+        onClick={() => setOptionsOpen((o) => !o)}
       >
         <path
           strokeLinecap="round"
@@ -157,85 +158,93 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
         />
       </svg>
 
-      <div className="min-w-[400px] z-10 absolute top-0 right-0 bg-white m-3 rounded-md  shadow-lg flex-col justify-center align-middle p-3">
-        <h1 className="text-black">Vouchers</h1>
-        <label
-          htmlFor="vouchers"
-          className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400"
-        >
-          Select Vouchers
-        </label>
+      {optionsOpen && (
+        <div className="min-w-[400px] z-10 absolute top-0 right-0 bg-white m-3 rounded-md  shadow-lg flex-col justify-center align-middle p-3">
+          <h1 className="text-black text-center">Settings</h1>
+          <label
+            htmlFor="vouchers"
+            className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400"
+          >
+            Filter Vouchers
+          </label>
 
-        <MultiSelect
-          selected={selectedTokens}
-          options={props.tokens}
-          label="Select Vouchers"
-          optionToKey={(o) => o.token_address}
-          optionToLabel={(o) => o.token_name}
-          onChange={(c) => setSelectedTokens(c)}
-        />
-        <div className="pt-2 flex justify-around">
-          <button
-            className="text-gray-800"
-            onClick={() => setSelectedTokens(props.tokens)}
+          <MultiSelect
+            selected={selectedTokens}
+            options={props.tokens}
+            label="Select Vouchers"
+            optionToKey={(o) => o.token_address}
+            optionToLabel={(o) => o.token_name}
+            onChange={(c) => setSelectedTokens(c)}
+          />
+          <div className="pt-2 flex justify-around">
+            <button
+              className="text-gray-800"
+              onClick={() => setSelectedTokens(props.tokens)}
+            >
+              Select All
+            </button>
+            <button
+              className="text-gray-800"
+              onClick={() => setSelectedTokens([])}
+            >
+              Clear
+            </button>
+          </div>
+          <br />
+          <label
+            htmlFor="animate"
+            className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400"
           >
-            Select All
-          </button>
-          <button
-            className="text-gray-800"
-            onClick={() => setSelectedTokens([])}
+            Animate
+          </label>
+          <div className="flex justify-around">
+            <button className="btn" onClick={() => setAnimate((prev) => !prev)}>
+              {animate ? "Stop Animation" : "Start Animation"}
+            </button>
+            <p className="text-gray-900">
+              {new Date(date).toLocaleDateString()}
+            </p>
+          </div>
+          <input
+            min={dateRange.start}
+            max={dateRange.end}
+            onChange={(e) => {
+              setDate(parseInt(e.target.value));
+            }}
+            id="default-range"
+            type="range"
+            value={date}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+          />
+          <br />
+          <label
+            htmlFor="view"
+            className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400"
           >
-            Clear
-          </button>
+            View
+          </label>
+          <div className="flex justify-around">
+            <button
+              className="btn"
+              disabled={graphType == "2D"}
+              onClick={() => setGraphType("2D")}
+            >
+              2D
+            </button>
+            <button
+              className="btn"
+              disabled={graphType == "3D"}
+              onClick={() => setGraphType("3D")}
+            >
+              3D
+            </button>
+          </div>
+          <br />
+          <p className="text-gray-400 text-right">
+            Last Update: {new Date(props.lastUpdate).toLocaleString()}
+          </p>
         </div>
-        <br />
-        <label
-          htmlFor="animate"
-          className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400"
-        >
-          Animate
-        </label>
-        <div className="flex justify-around">
-          <button className="btn" onClick={() => setAnimate((prev) => !prev)}>
-            {animate ? "Stop Animation" : "Start Animation"}
-          </button>
-          <p className="text-gray-900">{new Date(date).toLocaleDateString()}</p>
-        </div>
-        <input
-          min={dateRange.start}
-          max={dateRange.end}
-          onChange={(e) => {
-            setDate(parseInt(e.target.value));
-          }}
-          id="default-range"
-          type="range"
-          value={date}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-        />
-        <br />
-        <label
-          htmlFor="view"
-          className="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400"
-        >
-          View
-        </label>
-        <div className="flex justify-around">
-          <button
-            className="btn"
-            disabled={graphType == "2D"}
-            onClick={() => setGraphType("2D")}
-          >
-            2D
-          </button>
-          <button
-            className="btn"
-            disabled={graphType == "3D"}
-            onClick={() => setGraphType("3D")}
-          >
-            3D
-          </button>
-        </div>
-      </div>
+      )}
       {graphData && graphType == "2D" ? (
         <NetworkGraph2d graphData={graphData} />
       ) : (
