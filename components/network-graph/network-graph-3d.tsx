@@ -8,7 +8,6 @@ const ForceGraph3d = dynamic(() => import("react-force-graph-3d"), {
   ssr: false,
 });
 export const NetworkGraph3d = (props: SarafuNetworkGraphProps) => {
-  console.debug("Rerendered Network Graph");
 
   const ref = useRef<ForceGraph3DInstance>();
 

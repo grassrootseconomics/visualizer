@@ -7,7 +7,6 @@ const ForceGraph2d = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 });
 export const NetworkGraph2d = (props: SarafuNetworkGraphProps) => {
-  console.debug("Rerendered Network Graph");
 
   const ref = useRef();
 
@@ -36,6 +35,7 @@ export const NetworkGraph2d = (props: SarafuNetworkGraphProps) => {
       graphData={props.graphData}
       onNodeClick={handleClick}
       linkAutoColorBy="token_symbol"
+      linkWidth={0.1}
     />
   );
 };

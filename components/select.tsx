@@ -81,7 +81,7 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
       //className={className}
       value={props.selected}
       onChange={(event) => {
-        props.onChange(event)
+        props.onChange(event);
       }}
     >
       {({ open }) => (
@@ -95,9 +95,11 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
             <span className="inline-block w-full rounded-md shadow-sm">
               <Listbox.Button className="cursor-default relative w-full rounded-md border border-gray-300 bg-white pl-3 pr-10 py-2 text-left  transition ease-in-out duration-150">
                 {Array.isArray(props.selected) ? (
-                    <span className="block truncate text-black">
-                      Selected {props.selected.length == props.options.length ? 'All' : props.selected.length}
-                    </span>
+                  <span className="block truncate text-black">
+                    {props.selected.length == props.options.length
+                      ? "All"
+                      : `${props.selected.length} Selected`}
+                  </span>
                 ) : (
                   <span className="block truncate">
                     {props.optionToLabel(props.selected)}
