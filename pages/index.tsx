@@ -8,14 +8,16 @@ import { add, isAfter, isBefore } from "date-fns";
 import { InferGetStaticPropsType } from "next";
 import React from "react";
 
-const faucets = [
+const ignored_addresses = [
   "cd9fd1e71f684cfb30fa34831ed7ed59f6f77469",
   "289defd53e2d96f05ba29ebbebd9806c94d04cb6", // SARAFU MIGRATOR1
   "59a5e2faf8163fe24ca006a221dd0f34c5e0cb41", // SARAFU MIGRATOR2
   "ca5da01b6dac771c8f3625aa1a8931e7dac41832", // TOKEN DEPLOYER
   "65644d61fb9348a20ca0d89bb42d8152c82081b9", // SARAFU FAUCET
   "bbb4a93c8dcd82465b73a143f00fed4af7492a27", // SARAFU SINK
+  "b8830b647c01433f9492f315ddbfdc35cb3be6a6", // COMMUNITY FUND
 ];
+
 // This function gets called at build time on server-side.
 // It may be called again, on a serverless function, if
 // revalidation is enabled and a new request comes in
@@ -29,12 +31,12 @@ export const getStaticProps = async () => {
       AND: [
         {
           sender_address: {
-            notIn: faucets,
+            notIn: ignored_addresses,
           },
         },
         {
           recipient_address: {
-            notIn: faucets,
+            notIn: ignored_addresses,
           },
         },
       ],
@@ -64,7 +66,7 @@ export const getStaticProps = async () => {
       tokens,
       lastUpdate: Date.now(),
     },
-    revalidate: 60 * 60 * 6, // In seconds
+    revalidate: 60 * 60, // Revalidate Every Hour
   };
 };
 const now = new Date();
