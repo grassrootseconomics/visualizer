@@ -90,7 +90,7 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
     const newGraphData = {
       nodes: props.graphData.nodes.filter((node) =>
         selectedTokens.some((selectedToken) =>
-          node.usedVouchers.includes(selectedToken.token_address)
+          Object.keys(node.usedVouchers).includes(selectedToken.token_address)
         )
       ),
       links: props.graphData.links.filter((link) =>
@@ -124,13 +124,22 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
   const graphData = React.useMemo(() => {
     return {
       nodes: filteredByToken.nodes.filter((node) => {
-        return isBefore(node.date, date);
+        const firstSeen = Object.entries(node.usedVouchers).reduce((d, v) => {
+          if (
+            selectedTokens.findIndex((t) => t.token_address == v[0]) != -1 &&
+            isBefore(v[1], d)
+          ) {
+            return v[1];
+          }
+          return d;
+        }, Date.now());
+        return isBefore(firstSeen, date);
       }),
       links: filteredByToken.links.filter((link) => {
         return isBefore(link.date, date);
       }),
     };
-  }, [filteredByToken, date]);
+  }, [filteredByToken.nodes, filteredByToken.links, date, selectedTokens]);
 
   if (isAfter(date, dateRange.end) && animate) {
     setAnimate(false);
