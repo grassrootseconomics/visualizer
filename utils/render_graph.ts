@@ -1,13 +1,6 @@
 import type { tokens } from "@prisma/client";
 import { isBefore } from "date-fns";
 
-const faucets = [
-  "0xcd9fd1e71F684cfb30fA34831ED7ED59f6f77469",
-  "0x59a5E2fAF8163fE24cA006a221dD0f34c5e0Cb41",
-  "0x289DeFD53E2D96F05Ba29EbBebD9806C94d04Cb6",
-  "0xcA5DA01B6Dac771c8F3625AA1a8931E7DAC41832",
-  "0xB8830b647C01433F9492F315ddBFDc35CB3Be6A6",
-];
 interface NetworkData {
   tokens: tokens[];
   transactions: {
@@ -24,7 +17,7 @@ export const generateGraphData = (network: NetworkData) => {
   const addresses: {
     [address: string]: {
       firstSeen: number;
-      usedVouchers: {[address: string]: number};
+      usedVouchers: { [address: string]: number };
     };
   } = {};
 
@@ -38,41 +31,36 @@ export const generateGraphData = (network: NetworkData) => {
     value: number;
   }[] = [];
   for (const tx of network.transactions) {
-    if (
-      !faucets.includes(tx.sender_address) &&
-      !faucets.includes(tx.recipient_address)
-    ) {
-      const exsisteingLinkIndex = links.findIndex(
-        (predicate) =>
-          predicate.source === tx.sender_address &&
-          predicate.target === tx.recipient_address &&
-          predicate.token_address === tx.token_address
+    const exsisteingLinkIndex = links.findIndex(
+      (predicate) =>
+        predicate.source === tx.sender_address &&
+        predicate.target === tx.recipient_address &&
+        predicate.token_address === tx.token_address
+    );
+    if (exsisteingLinkIndex === -1) {
+      const token = network.tokens.find(
+        (token) => token.token_address === tx.token_address
       );
-      if (exsisteingLinkIndex === -1) {
-        const token = network.tokens.find(
-          (token) => token.token_address === tx.token_address
-        );
-        // if (!token) {
-        //   console.log(`Unknown Token ${tx.token_address}`);
-        // }
-        links.push({
-          token_name: token?.token_name ?? "Unknown",
-          token_symbol: token?.token_symbol ?? "Unknown",
-          source: tx.sender_address,
-          target: tx.recipient_address,
-          token_address: tx.token_address,
-          date: tx.date_block.getTime(),
-          value: 1,
-        });
-      } else {
-        links[exsisteingLinkIndex].value++;
-        if (isBefore(tx.date_block, links[exsisteingLinkIndex].date)) {
-          links[exsisteingLinkIndex].date = tx.date_block.getTime();
-        }
+      // if (!token) {
+      //   console.log(`Unknown Token ${tx.token_address}`);
+      // }
+      links.push({
+        token_name: token?.token_name ?? "Unknown",
+        token_symbol: token?.token_symbol ?? "Unknown",
+        source: tx.sender_address,
+        target: tx.recipient_address,
+        token_address: tx.token_address,
+        date: tx.date_block.getTime(),
+        value: 1,
+      });
+    } else {
+      links[exsisteingLinkIndex].value++;
+      if (isBefore(tx.date_block, links[exsisteingLinkIndex].date)) {
+        links[exsisteingLinkIndex].date = tx.date_block.getTime();
       }
-      addAddress(addresses, tx, tx.sender_address);
-      addAddress(addresses, tx, tx.recipient_address);
     }
+    addAddress(addresses, tx, tx.sender_address);
+    addAddress(addresses, tx, tx.recipient_address);
   }
   return {
     links,
