@@ -24,7 +24,7 @@ export const generateGraphData = (network: NetworkData) => {
   const addresses: {
     [address: string]: {
       firstSeen: number;
-      usedVouchers: string[];
+      usedVouchers: {[address: string]: number};
     };
   } = {};
 
@@ -80,7 +80,6 @@ export const generateGraphData = (network: NetworkData) => {
       return {
         id: address,
         group: 1,
-        date: addresses[address].firstSeen,
         usedVouchers: addresses[address].usedVouchers,
         value: network.transactions.reduce((acc, v) => {
           if (v.sender_address === address) {
@@ -106,7 +105,9 @@ export type Node = Nodes[0];
 export type Link = Links[0];
 
 function addAddress(
-  addresses: { [address: string]: { firstSeen: number; usedVouchers: string[] } },
+  addresses: {
+    [address: string]: { usedVouchers: { [address: string]: number } };
+  },
   tx: {
     recipient_address: string;
     sender_address: string;
@@ -119,17 +120,21 @@ function addAddress(
 ) {
   if (!addresses[address]) {
     addresses[address] = {
-      firstSeen: tx.date_block.getTime(),
-      usedVouchers: [tx.token_address],
+      usedVouchers: {
+        [tx.token_address]: tx.date_block.getTime(),
+      },
     };
   } else {
-    // First Seen
-    if (isBefore(tx.date_block, addresses[address].firstSeen)) {
-      addresses[address].firstSeen = tx.date_block.getTime();
-    }
-    // Used Tokens
-    if (!addresses[address].usedVouchers.includes(tx.token_address)) {
-      addresses[address].usedVouchers.push(tx.token_address);
+    if (
+      !Object.keys(addresses[address].usedVouchers).includes(tx.token_address)
+    ) {
+      addresses[address].usedVouchers[tx.token_address] =
+        tx.date_block.getTime();
+    } else if (
+      isBefore(tx.date_block, addresses[address].usedVouchers[tx.token_address])
+    ) {
+      addresses[address].usedVouchers[tx.token_address] =
+        tx.date_block.getTime();
     }
   }
 }
