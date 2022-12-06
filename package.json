@@ -10,10 +10,10 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://https://github.com/grassrootseconomics/visualizer.git"
+    "url": "git+https://github.com/grassrootseconomics/visualizer.git"
   },
   "engines": {
-    "node": ">=10.0.0"
+    "node": ">=16.0.0"
   },
   "scripts": {
     "dev": "next",
