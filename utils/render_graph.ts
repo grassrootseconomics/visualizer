@@ -42,11 +42,11 @@ export const generateGraphData = (network: NetworkData) => {
   } = {};
 
   let links: {
-    token_name: string;
-    token_symbol: string;
+    voucher_name: string;
+    symbol: string;
     source: string;
     target: string;
-    token_address: string;
+    voucher_address: string;
     date: number;
     value: number;
   }[] = [];
@@ -55,7 +55,7 @@ export const generateGraphData = (network: NetworkData) => {
       (predicate) =>
         predicate.source === tx.sender_address &&
         predicate.target === tx.recipient_address &&
-        predicate.token_address === tx.voucher_address
+        predicate.voucher_address === tx.voucher_address
     );
     if (exsisteingLinkIndex === -1) {
       const token = network.vouchers.find(
@@ -65,11 +65,11 @@ export const generateGraphData = (network: NetworkData) => {
       //   console.log(`Unknown Token ${tx.token_address}`);
       // }
       links.push({
-        token_name: token?.voucher_name ?? "Unknown",
-        token_symbol: token?.symbol ?? "Unknown",
+        voucher_name: token?.voucher_name ?? "Unknown",
+        symbol: token?.symbol ?? "Unknown",
         source: tx.sender_address,
         target: tx.recipient_address,
-        token_address: tx.voucher_address,
+        voucher_address: tx.voucher_address,
         date: tx.date_block.getTime(),
         value: 1,
       });

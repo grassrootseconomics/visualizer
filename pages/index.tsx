@@ -72,7 +72,7 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
       links: props.graphData.links.filter((link) =>
         selectedTokens.some(
           (selectedToken) =>
-            selectedToken.voucher_address === link.token_address
+            selectedToken.voucher_address === link.voucher_address
         )
       ),
     };
