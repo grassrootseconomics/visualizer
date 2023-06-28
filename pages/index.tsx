@@ -13,11 +13,13 @@ import React from "react";
 // revalidation is enabled and a new request comes in
 export const getStaticProps = async () => {
   const vouchersP = kysely.selectFrom("vouchers").selectAll().execute();
-
+  const faucet = "0x5523058cdFfe5F3c1EaDADD5015E55C6E00fb439";
   const transactionsP = kysely
     .selectFrom("transactions")
     .selectAll()
     .where("success", "=", true)
+    .where("sender_address", "!=", faucet)
+    .where("recipient_address", "!=", faucet)
     .execute();
 
   const [vouchers, transactions] = await Promise.all([
