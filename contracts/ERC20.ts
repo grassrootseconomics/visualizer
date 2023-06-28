@@ -1,5 +1,4 @@
-import { AbiItem } from './../node_modules/web3-utils/types/index.d';
-export const ERC20: AbiItem[] = [
+export const ERC20 = [
   {
     anonymous: false,
     inputs: [
@@ -116,4 +115,4 @@ export const ERC20: AbiItem[] = [
     stateMutability: "nonpayable",
     type: "function",
   },
-];
+] as const;

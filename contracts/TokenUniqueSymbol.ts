@@ -1,5 +1,4 @@
-import { AbiItem } from './../node_modules/web3-utils/types/index.d';
-export const TokenUniqueSymbolJSON: AbiItem[] = [
+export const TokenUniqueSymbolJSON = [
   {
     inputs: [],
     stateMutability: "nonpayable",
@@ -253,4 +252,4 @@ export const TokenUniqueSymbolJSON: AbiItem[] = [
     stateMutability: "nonpayable",
     type: "function",
   },
-];
+] as const;
