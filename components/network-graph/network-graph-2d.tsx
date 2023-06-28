@@ -1,4 +1,4 @@
-import { Link } from "@utils/render_graph";
+import { Link, Nodes } from "@utils/render_graph";
 import dynamic from "next/dynamic";
 import { useCallback, useRef } from "react";
 import { Types } from "./types";
@@ -7,7 +7,6 @@ const ForceGraph2d = dynamic(() => import("react-force-graph-2d"), {
   ssr: false,
 });
 export const NetworkGraph2d = (props: SarafuNetworkGraphProps) => {
-
   const ref = useRef();
 
   const handleClick = useCallback(
@@ -23,18 +22,21 @@ export const NetworkGraph2d = (props: SarafuNetworkGraphProps) => {
       ref={ref}
       enableNodeDrag={false}
       nodeLabel={(d: Node & { id: number }) =>
-        `<span style="color: grey">${d.id}</span>`
+        `<span style="padding:4px 8px;border-radius: 8px;background-color: white;color: grey">${d.id}</span>`
       }
       linkLabel={(d: Link) =>
-        `<span style="color: grey">${
+        `<span style="padding:4px 8px;border-radius: 8px;background-color: white;color: grey">${
           //@ts-ignore
-          d?.token_symbol ?? d?.token_name ?? "?"
+          `${d?.symbol} ${d?.voucher_name}`
         }</span>`
       }
+      nodeAutoColorBy={(n: Nodes[0]) => {
+        return Object.keys(n.usedVouchers)[0];
+      }}
       backgroundColor="rgba(0,0,0,0)"
       graphData={props.graphData}
       onNodeClick={handleClick}
-      linkAutoColorBy="token_symbol"
+      linkAutoColorBy="voucher_address"
       linkWidth={0.1}
     />
   );
@@ -43,4 +45,3 @@ export const NetworkGraph2d = (props: SarafuNetworkGraphProps) => {
 interface SarafuNetworkGraphProps {
   graphData: Types.DataObject;
 }
-

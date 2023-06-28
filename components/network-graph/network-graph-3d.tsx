@@ -1,5 +1,5 @@
 import { ForceGraph3DInstance } from "3d-force-graph";
-import { Link } from "@utils/render_graph";
+import { Links, Nodes } from "@utils/render_graph";
 import dynamic from "next/dynamic";
 import { useCallback, useRef } from "react";
 import { Types } from "./types";
@@ -8,51 +8,42 @@ const ForceGraph3d = dynamic(() => import("react-force-graph-3d"), {
   ssr: false,
 });
 export const NetworkGraph3d = (props: SarafuNetworkGraphProps) => {
-
   const ref = useRef<ForceGraph3DInstance>();
 
-  const handleClick = useCallback(
-    (node) => {
-      // Node 0xAddress
-      navigator.clipboard.writeText(node.id);
-      // Camera points to node from outside
-      const distance = 50;
-      const distRatio = 1 + distance / Math.hypot(node.x, node.y, node.z);
-      if (
-        ref.current &&
-        (ref.current as object).hasOwnProperty("cameraPosition")
-      ) {
-        (ref.current as Types.CameraPosition).cameraPosition(
-          {
-            x: node.x * distRatio,
-            y: node.y * distRatio,
-            z: node.z * distRatio,
-          }, // new position
-          node, // ({ x, y, z })
-          3000
-        );
-      }
-    },
-    [ref]
-  );
-
+  const handleNodeClick = useCallback((node) => {
+    // Node 0xAddress
+    navigator.clipboard.writeText(node.id);
+    window.open(`https://celoscan.io/address/${node.id}`, "_blank");
+  }, []);
+  const handleLinkClick = useCallback((link: Links[0]) => {
+    // Node 0xAddress
+    navigator.clipboard.writeText(link.voucher_address);
+    window.open(
+      `https://sarafu.network/vouchers/${link.voucher_address}`,
+      "_blank"
+    );
+  }, []);
   return (
     <ForceGraph3d
       ref={ref}
       enableNodeDrag={false}
-      nodeLabel={(d: Node & { id: number }) =>
-        `<span style="color: grey">${d.id}</span>`
+      nodeLabel={(node: Nodes[0]) =>
+        `<span style="padding:4px 8px;border-radius: 8px;background-color: white;color: grey">${node.id}</span>`
       }
-      linkLabel={(d: Link) =>
-        `<span style="color: grey">${
+      linkLabel={(link: Links[0]) =>
+        `<span style="padding:4px 8px;border-radius: 8px;background-color: white;color: grey">${
           //@ts-ignore
-          d?.token_symbol ?? d?.token_name ?? "?"
+          `${link?.symbol} ${link?.voucher_name}`
         }</span>`
       }
       backgroundColor="rgba(0,0,0,0)"
       graphData={props.graphData}
-      onNodeClick={handleClick}
-      linkAutoColorBy="token_symbol"
+      onNodeClick={handleNodeClick}
+      onLinkClick={handleLinkClick}
+      nodeAutoColorBy={(n: Nodes[0]) => {
+        return Object.keys(n.usedVouchers)[0];
+      }}
+      linkAutoColorBy="voucher_address"
     />
   );
 };
@@ -60,4 +51,3 @@ export const NetworkGraph3d = (props: SarafuNetworkGraphProps) => {
 interface SarafuNetworkGraphProps {
   graphData: Types.DataObject;
 }
-

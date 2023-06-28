@@ -1,16 +1,36 @@
-import type { tokens } from "@prisma/client";
 import { isBefore } from "date-fns";
-
+import { Point } from "kysely-codegen";
+type Voucher = {
+  symbol: string;
+  id: number;
+  voucher_address: string;
+  voucher_name: string;
+  voucher_description: string;
+  demurrage_rate: string;
+  sink_address: string;
+  supply: number;
+  active: boolean;
+  location_name: string;
+  geo: Point;
+  created_at: Date;
+  radius: number;
+};
+type Transaction = {
+  tx_type: string;
+  id: number;
+  voucher_address: string;
+  tx_hash: string;
+  block_number: number;
+  tx_index: number;
+  sender_address: string;
+  recipient_address: string;
+  tx_value: string;
+  date_block: Date;
+  success: boolean;
+};
 interface NetworkData {
-  tokens: tokens[];
-  transactions: {
-    recipient_address: string;
-    sender_address: string;
-    tx_hash: string;
-    tx_value: bigint;
-    token_address: string;
-    date_block: Date;
-  }[];
+  vouchers: Voucher[];
+  transactions: Transaction[];
 }
 
 export const generateGraphData = (network: NetworkData) => {
@@ -22,11 +42,11 @@ export const generateGraphData = (network: NetworkData) => {
   } = {};
 
   let links: {
-    token_name: string;
-    token_symbol: string;
+    voucher_name: string;
+    symbol: string;
     source: string;
     target: string;
-    token_address: string;
+    voucher_address: string;
     date: number;
     value: number;
   }[] = [];
@@ -35,21 +55,21 @@ export const generateGraphData = (network: NetworkData) => {
       (predicate) =>
         predicate.source === tx.sender_address &&
         predicate.target === tx.recipient_address &&
-        predicate.token_address === tx.token_address
+        predicate.voucher_address === tx.voucher_address
     );
     if (exsisteingLinkIndex === -1) {
-      const token = network.tokens.find(
-        (token) => token.token_address === tx.token_address
+      const token = network.vouchers.find(
+        (token) => token.voucher_address === tx.voucher_address
       );
       // if (!token) {
       //   console.log(`Unknown Token ${tx.token_address}`);
       // }
       links.push({
-        token_name: token?.token_name ?? "Unknown",
-        token_symbol: token?.token_symbol ?? "Unknown",
+        voucher_name: token?.voucher_name ?? "Unknown",
+        symbol: token?.symbol ?? "Unknown",
         source: tx.sender_address,
         target: tx.recipient_address,
-        token_address: tx.token_address,
+        voucher_address: tx.voucher_address,
         date: tx.date_block.getTime(),
         value: 1,
       });
@@ -96,32 +116,28 @@ function addAddress(
   addresses: {
     [address: string]: { usedVouchers: { [address: string]: number } };
   },
-  tx: {
-    recipient_address: string;
-    sender_address: string;
-    tx_hash: string;
-    tx_value: bigint;
-    token_address: string;
-    date_block: Date;
-  },
+  tx: Transaction,
   address: string
 ) {
   if (!addresses[address]) {
     addresses[address] = {
       usedVouchers: {
-        [tx.token_address]: tx.date_block.getTime(),
+        [tx.voucher_address]: tx.date_block.getTime(),
       },
     };
   } else {
     if (
-      !Object.keys(addresses[address].usedVouchers).includes(tx.token_address)
+      !Object.keys(addresses[address].usedVouchers).includes(tx.voucher_address)
     ) {
-      addresses[address].usedVouchers[tx.token_address] =
+      addresses[address].usedVouchers[tx.voucher_address] =
         tx.date_block.getTime();
     } else if (
-      isBefore(tx.date_block, addresses[address].usedVouchers[tx.token_address])
+      isBefore(
+        tx.date_block,
+        addresses[address].usedVouchers[tx.voucher_address]
+      )
     ) {
-      addresses[address].usedVouchers[tx.token_address] =
+      addresses[address].usedVouchers[tx.voucher_address] =
         tx.date_block.getTime();
     }
   }

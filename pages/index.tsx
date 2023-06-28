@@ -1,69 +1,43 @@
 import { NetworkGraph2d } from "@components/network-graph/network-graph-2d";
 import { NetworkGraph3d } from "@components/network-graph/network-graph-3d";
 import { MultiSelect } from "@components/select";
-import { prisma } from "@utils/db";
+import { kysely } from "db/db";
 
 import { generateGraphData } from "@utils/render_graph";
 import { add, isAfter, isBefore } from "date-fns";
 import { InferGetStaticPropsType } from "next";
 import React from "react";
 
-const ignored_addresses = [
-  "cd9fd1e71f684cfb30fa34831ed7ed59f6f77469",
-  "289defd53e2d96f05ba29ebbebd9806c94d04cb6", // SARAFU MIGRATOR1
-  "59a5e2faf8163fe24ca006a221dd0f34c5e0cb41", // SARAFU MIGRATOR2
-  "ca5da01b6dac771c8f3625aa1a8931e7dac41832", // TOKEN DEPLOYER
-  "65644d61fb9348a20ca0d89bb42d8152c82081b9", // SARAFU FAUCET
-  "bbb4a93c8dcd82465b73a143f00fed4af7492a27", // SARAFU SINK
-  "b8830b647c01433f9492f315ddbfdc35cb3be6a6", // COMMUNITY FUND
-];
-
 // This function gets called at build time on server-side.
 // It may be called again, on a serverless function, if
 // revalidation is enabled and a new request comes in
 export const getStaticProps = async () => {
-  const tokensP = prisma.tokens.findMany();
-  const archivedTokensP = prisma.archived_tokens.findMany();
+  const vouchersP = kysely.selectFrom("vouchers").selectAll().execute();
+  const faucet = "0x5523058cdFfe5F3c1EaDADD5015E55C6E00fb439";
+  const transactionsP = kysely
+    .selectFrom("transactions")
+    .selectAll()
+    .where("success", "=", true)
+    .where("sender_address", "!=", faucet)
+    .where("recipient_address", "!=", faucet)
+    .execute();
 
-  const transactionsP = prisma.transactions.findMany({
-    where: {
-      success: true,
-      AND: [
-        {
-          sender_address: {
-            notIn: ignored_addresses,
-          },
-        },
-        {
-          recipient_address: {
-            notIn: ignored_addresses,
-          },
-        },
-      ],
-    },
-    select: {
-      tx_hash: true,
-      sender_address: true,
-      recipient_address: true,
-      tx_value: true,
-      token_address: true,
-      date_block: true,
-    },
-  });
-  const [tokens, archived_tokens, transactions] = await Promise.all([
-    tokensP,
-    archivedTokensP,
+  const [vouchers, transactions] = await Promise.all([
+    vouchersP,
     transactionsP,
   ]);
 
   const graphData = generateGraphData({
-    tokens: [...tokens, ...archived_tokens],
+    vouchers: [...vouchers],
     transactions,
   });
   return {
     props: {
       graphData: graphData,
-      tokens,
+      vouchers: vouchers.map((v) => ({
+        ...v,
+        created_at: v.created_at.getTime(),
+      })),
       lastUpdate: Date.now(),
     },
     revalidate: 60 * 60, // Revalidate Every Hour
@@ -72,7 +46,7 @@ export const getStaticProps = async () => {
 const now = new Date();
 
 function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
-  const [selectedTokens, setSelectedTokens] = React.useState(props.tokens);
+  const [selectedTokens, setSelectedTokens] = React.useState(props.vouchers);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [filteredByToken, setFilteredByToken] = React.useState(props.graphData);
   const [graphType, setGraphType] = React.useState<"2D" | "3D">("3D");
@@ -92,12 +66,13 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
     const newGraphData = {
       nodes: props.graphData.nodes.filter((node) =>
         selectedTokens.some((selectedToken) =>
-          Object.keys(node.usedVouchers).includes(selectedToken.token_address)
+          Object.keys(node.usedVouchers).includes(selectedToken.voucher_address)
         )
       ),
       links: props.graphData.links.filter((link) =>
         selectedTokens.some(
-          (selectedToken) => selectedToken.token_address === link.token_address
+          (selectedToken) =>
+            selectedToken.voucher_address === link.voucher_address
         )
       ),
     };
@@ -128,7 +103,7 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
       nodes: filteredByToken.nodes.filter((node) => {
         const firstSeen = Object.entries(node.usedVouchers).reduce((d, v) => {
           if (
-            selectedTokens.findIndex((t) => t.token_address == v[0]) != -1 &&
+            selectedTokens.findIndex((t) => t.voucher_address == v[0]) != -1 &&
             isBefore(v[1], d)
           ) {
             return v[1];
@@ -181,16 +156,16 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
 
           <MultiSelect
             selected={selectedTokens}
-            options={props.tokens}
+            options={props.vouchers}
             label="Select Vouchers"
-            optionToKey={(o) => o.token_address}
-            optionToLabel={(o) => o.token_name}
+            optionToKey={(o) => o.voucher_address}
+            optionToLabel={(o) => o.voucher_name}
             onChange={(c) => setSelectedTokens(c)}
           />
           <div className="pt-2 flex justify-around">
             <button
               className="text-gray-800"
-              onClick={() => setSelectedTokens(props.tokens)}
+              onClick={() => setSelectedTokens(props.vouchers)}
             >
               Select All
             </button>
