@@ -175,7 +175,7 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
   }
   return (
     <div className="w-screen h-[100vh] overflow-hidden my-auto">
-      <div className="justify-center align-middle absolute bottom-0 right-0 flex">
+      <div className="justify-center items-center absolute bottom-0 right-0 flex">
         {animate ? (
           <PauseIcon onClick={() => setAnimate(false)} />
         ) : (
