@@ -40,7 +40,7 @@ export const getStaticProps = async () => {
       })),
       lastUpdate: Date.now(),
     },
-    revalidate: 60 * 60, // Revalidate Every Hour
+    revalidate: 60 * 60 * 24, // Revalidate Every Day
   };
 };
 const now = new Date();
