@@ -6,9 +6,6 @@ type Voucher = {
   voucher_address: string;
   voucher_name: string;
   voucher_description: string;
-  demurrage_rate: string;
-  sink_address: string;
-  supply: number;
   active: boolean;
   location_name: string;
   geo: Point;
