@@ -1,21 +1,32 @@
 import { Kysely, PostgresDialect } from "kysely";
-import { type DB } from "kysely-codegen";
 import { Pool } from "pg";
-import { PointPlugin } from "./plugins";
+import { type DB as GraphDB } from "./graph-db";
+import { type DB as IndexerDB } from "./indexer-db";
 
-const globalForKysely = globalThis as unknown as {
-  kysely: Kysely<DB> | undefined;
+const globalForDatabases = globalThis as unknown as {
+  graphDB: Kysely<GraphDB> | undefined;
+  indexerDB: Kysely<IndexerDB> | undefined;
 };
-
-export const kysely =
-  globalForKysely.kysely ??
-  new Kysely<DB>({
+export type { GraphDB, IndexerDB };
+export const graphDB =
+  globalForDatabases.graphDB ??
+  new Kysely<GraphDB>({
     dialect: new PostgresDialect({
       pool: new Pool({
         connectionString: process.env.DATABASE_URL,
+        idleTimeoutMillis: 10000,
       }),
     }),
-    plugins: [new PointPlugin()],
   });
-
-if (process.env.NODE_ENV !== "production") globalForKysely.kysely = kysely;
+export const indexerDB =
+  globalForDatabases.indexerDB ??
+  new Kysely<IndexerDB>({
+    dialect: new PostgresDialect({
+      pool: new Pool({
+        connectionString: process.env.INDEXER_DB_URL,
+      }),
+    }),
+    // log: env.NODE_ENV !== "production" ? ["query"] : undefined,
+  });
+globalForDatabases.graphDB = graphDB;
+globalForDatabases.indexerDB = indexerDB;

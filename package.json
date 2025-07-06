@@ -18,8 +18,8 @@
   "scripts": {
     "dev": "next",
     "build": "next build",
-    "postinstall": "kysely-codegen",
-    "generate": "kysely-codegen",
+    "generate:graph": "kysely-codegen --out-file ./db/graph-db.d.ts",
+    "generate:indexer": "source .env && kysely-codegen --url $INDEXER_DB_URL --out-file ./db/indexer-db.d.ts --dialect postgres",
     "start": "next start",
     "cli": "esr ./bin/index.ts"
   },
@@ -27,6 +27,7 @@
     "3d-force-graph": "^1.71.4",
     "@headlessui/react": "^1.7.15",
     "@tailwindui/react": "^0.1.1",
+    "@vercel/kv": "^3.0.0",
     "accessor-fn": "^1.5.0",
     "autoprefixer": "^10.4.14",
     "date-fns": "^2.30.0",

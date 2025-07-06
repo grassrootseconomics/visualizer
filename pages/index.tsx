@@ -1,48 +1,18 @@
 import { NetworkGraph2d } from "@components/network-graph/network-graph-2d";
 import { NetworkGraph3d } from "@components/network-graph/network-graph-3d";
 import { MultiSelect } from "@components/select";
-import { kysely } from "db/db";
-
-import { generateGraphData } from "@utils/render_graph";
 import { add, isAfter, isBefore } from "date-fns";
-import { InferGetStaticPropsType } from "next";
 import React from "react";
+import useSWR from "swr";
 
-// This function gets called at build time on server-side.
-// It may be called again, on a serverless function, if
-// revalidation is enabled and a new request comes in
-export const getStaticProps = async () => {
-  const vouchersP = kysely.selectFrom("vouchers").selectAll().execute();
-  const faucet = "0x5523058cdFfe5F3c1EaDADD5015E55C6E00fb439";
-  const transactionsP = kysely
-    .selectFrom("transactions")
-    .selectAll()
-    .where("success", "=", true)
-    .where("sender_address", "!=", faucet)
-    .where("recipient_address", "!=", faucet)
-    .execute();
+// Fetcher function for SWR
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-  const [vouchers, transactions] = await Promise.all([
-    vouchersP,
-    transactionsP,
-  ]);
-
-  const graphData = generateGraphData({
-    vouchers: [...vouchers],
-    transactions,
-  });
-  return {
-    props: {
-      graphData: graphData,
-      vouchers: vouchers.map((v) => ({
-        ...v,
-        created_at: v.created_at.getTime(),
-      })),
-      lastUpdate: Date.now(),
-    },
-    revalidate: 60 * 60 * 24, // Revalidate Every Day
-  };
-};
+interface GraphData {
+  graphData: any;
+  vouchers: any[];
+  lastUpdate: number;
+}
 const now = new Date();
 
 const PlayIcon = ({ onClick }) => {
@@ -97,31 +67,51 @@ function GearIcon(props: { onClick: () => void }) {
   );
 }
 
-function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
-  const [selectedTokens, setSelectedTokens] = React.useState(props.vouchers);
+function Dashboard() {
+  // Use SWR to fetch data from our API
+  const { data, error, isLoading } = useSWR<GraphData>(
+    "/api/graph-data",
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
+      revalidateOnFocus: false,
+    }
+  );
+
+  const [selectedTokens, setSelectedTokens] = React.useState<any[]>([]);
   const [optionsOpen, setOptionsOpen] = React.useState(false);
-  const [filteredByToken, setFilteredByToken] = React.useState(props.graphData);
+  const [filteredByToken, setFilteredByToken] = React.useState<any>({
+    nodes: [],
+    links: [],
+  });
   const [graphType, setGraphType] = React.useState<"2D" | "3D">("3D");
 
   const [animate, setAnimate] = React.useState<Boolean>(false);
   const [date, setDate] = React.useState(now.getTime());
 
   const [dateRange, setDateRage] = React.useState({
-    start: filteredByToken.links.reduce(
-      (acc, e) => Math.min(acc, e.date),
-      date
-    ),
-    end: filteredByToken.links.reduce((acc, e) => Math.max(acc, e.date), date),
+    start: date,
+    end: date,
   });
 
+  // Update state when data is loaded
   React.useEffect(() => {
+    if (data) {
+      setSelectedTokens(data.vouchers);
+      setFilteredByToken(data.graphData);
+    }
+  }, [data]);
+
+  React.useEffect(() => {
+    if (!data) return;
+
     const newGraphData = {
-      nodes: props.graphData.nodes.filter((node) =>
+      nodes: data.graphData.nodes.filter((node: any) =>
         selectedTokens.some((selectedToken) =>
           Object.keys(node.usedVouchers).includes(selectedToken.voucher_address)
         )
       ),
-      links: props.graphData.links.filter((link) =>
+      links: data.graphData.links.filter((link: any) =>
         selectedTokens.some(
           (selectedToken) =>
             selectedToken.voucher_address === link.voucher_address
@@ -129,11 +119,17 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
       ),
     };
     setDateRage({
-      start: newGraphData.links.reduce((acc, e) => Math.min(acc, e.date), date),
-      end: newGraphData.links.reduce((acc, e) => Math.max(acc, e.date), date),
+      start: newGraphData.links.reduce(
+        (acc: number, e: any) => Math.min(acc, e.date),
+        date
+      ),
+      end: newGraphData.links.reduce(
+        (acc: number, e: any) => Math.max(acc, e.date),
+        date
+      ),
     });
     setFilteredByToken(newGraphData);
-  }, [date, props.graphData.links, props.graphData.nodes, selectedTokens]);
+  }, [date, data, selectedTokens]);
 
   React.useEffect(() => {
     if (animate) {
@@ -152,20 +148,24 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
 
   const graphData = React.useMemo(() => {
     return {
-      nodes: filteredByToken.nodes.filter((node) => {
-        const firstSeen = Object.entries(node.usedVouchers).reduce((d, v) => {
-          if (
-            selectedTokens.findIndex((t) => t.voucher_address == v[0]) != -1 &&
-            isBefore(v[1], d)
-          ) {
-            return v[1];
-          }
-          return d;
-        }, Date.now());
-        return isBefore(firstSeen, date);
+      nodes: filteredByToken.nodes.filter((node: any) => {
+        const firstSeen = Object.entries(node.usedVouchers).reduce(
+          (d: number, v: [string, any]) => {
+            if (
+              selectedTokens.findIndex((t) => t.voucher_address == v[0]) !=
+                -1 &&
+              isBefore(new Date(v[1] as number), new Date(d))
+            ) {
+              return v[1] as number;
+            }
+            return d;
+          },
+          Date.now()
+        );
+        return isBefore(new Date(firstSeen), new Date(date));
       }),
-      links: filteredByToken.links.filter((link) => {
-        return isBefore(link.date, date);
+      links: filteredByToken.links.filter((link: any) => {
+        return isBefore(new Date(link.date), new Date(date));
       }),
     };
   }, [filteredByToken.nodes, filteredByToken.links, date, selectedTokens]);
@@ -173,6 +173,44 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
   if (isAfter(date, dateRange.end) && animate) {
     setAnimate(false);
   }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="w-screen h-[100vh] flex items-center justify-center">
+        <div className="text-2xl text-gray-600">Loading graph data...</div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="w-screen h-[100vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl text-red-600 mb-4">Error loading data</div>
+          <div className="text-gray-600">
+            {error.message || "Failed to load graph data"}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no data
+  if (!data) {
+    return (
+      <div className="w-screen h-[100vh] flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl text-gray-600 mb-4">No data available</div>
+          <div className="text-gray-500">
+            Graph data not found. Please run the cron job first.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-screen h-[100vh] overflow-hidden my-auto">
       <div className="justify-center items-center absolute bottom-0 right-0 flex">
@@ -196,16 +234,16 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
 
           <MultiSelect
             selected={selectedTokens}
-            options={props.vouchers}
+            options={data.vouchers}
             label="Select Vouchers"
-            optionToKey={(o) => o.voucher_address}
-            optionToLabel={(o) => o.voucher_name}
+            optionToKey={(o: any) => o.voucher_address}
+            optionToLabel={(o: any) => o.voucher_name}
             onChange={(c) => setSelectedTokens(c)}
           />
           <div className="pt-2 flex justify-around">
             <button
               className="text-gray-800"
-              onClick={() => setSelectedTokens(props.vouchers)}
+              onClick={() => setSelectedTokens(data.vouchers)}
             >
               Select All
             </button>
@@ -267,7 +305,10 @@ function Dashboard(props: InferGetStaticPropsType<typeof getStaticProps>) {
           </div>
           <br />
           <p className="text-gray-400 text-right">
-            Last Update: {new Date(props.lastUpdate).toLocaleString()}
+            Last Update:{" "}
+            {data.lastUpdate
+              ? new Date(data.lastUpdate).toLocaleString()
+              : "Unknown"}
           </p>
         </div>
       )}

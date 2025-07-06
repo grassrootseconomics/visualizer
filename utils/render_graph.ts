@@ -1,4 +1,3 @@
-import { isBefore } from "date-fns";
 import { Point } from "kysely-codegen";
 type Voucher = {
   symbol: string;
@@ -31,74 +30,112 @@ interface NetworkData {
 }
 
 export const generateGraphData = (network: NetworkData) => {
-  const addresses: {
-    [address: string]: {
-      firstSeen: number;
-      usedVouchers: { [address: string]: number };
-    };
-  } = {};
+  // Pre-index vouchers by address for O(1) lookup
+  const vouchersByAddress = new Map<string, Voucher>();
+  for (const voucher of network.vouchers) {
+    vouchersByAddress.set(voucher.voucher_address, voucher);
+  }
 
-  let links: {
-    voucher_name: string;
-    symbol: string;
-    source: string;
-    target: string;
-    voucher_address: string;
-    date: number;
-    value: number;
-  }[] = [];
+  // Use Map for O(1) link lookups
+  const linkMap = new Map<
+    string,
+    {
+      voucher_name: string;
+      symbol: string;
+      source: string;
+      target: string;
+      voucher_address: string;
+      date: number;
+      value: number;
+    }
+  >();
+
+  // Track addresses and their transaction counts
+  const addresses = new Map<
+    string,
+    {
+      usedVouchers: Map<string, number>;
+      transactionCount: number;
+    }
+  >();
+
+  // Process transactions once
   for (const tx of network.transactions) {
-    const exsisteingLinkIndex = links.findIndex(
-      (predicate) =>
-        predicate.source === tx.sender_address &&
-        predicate.target === tx.recipient_address &&
-        predicate.voucher_address === tx.voucher_address
-    );
-    if (exsisteingLinkIndex === -1) {
-      const token = network.vouchers.find(
-        (token) => token.voucher_address === tx.voucher_address
-      );
-      // if (!token) {
-      //   console.log(`Unknown Token ${tx.token_address}`);
-      // }
-      links.push({
-        voucher_name: token?.voucher_name ?? "Unknown",
-        symbol: token?.symbol ?? "Unknown",
+    const linkKey = `${tx.sender_address}-${tx.recipient_address}-${tx.voucher_address}`;
+    const txDateTime = tx.date_block.getTime();
+
+    // Handle links
+    const existingLink = linkMap.get(linkKey);
+    if (existingLink) {
+      existingLink.value++;
+      if (txDateTime < existingLink.date) {
+        existingLink.date = txDateTime;
+      }
+    } else {
+      const voucher = vouchersByAddress.get(tx.voucher_address);
+      linkMap.set(linkKey, {
+        voucher_name: voucher?.voucher_name ?? "Unknown",
+        symbol: voucher?.symbol ?? "Unknown",
         source: tx.sender_address,
         target: tx.recipient_address,
         voucher_address: tx.voucher_address,
-        date: tx.date_block.getTime(),
+        date: txDateTime,
         value: 1,
       });
-    } else {
-      links[exsisteingLinkIndex].value++;
-      if (isBefore(tx.date_block, links[exsisteingLinkIndex].date)) {
-        links[exsisteingLinkIndex].date = tx.date_block.getTime();
-      }
     }
-    addAddress(addresses, tx, tx.sender_address);
-    addAddress(addresses, tx, tx.recipient_address);
+
+    // Handle addresses (both sender and recipient)
+    updateAddress(addresses, tx.sender_address, tx.voucher_address, txDateTime);
+    updateAddress(
+      addresses,
+      tx.recipient_address,
+      tx.voucher_address,
+      txDateTime
+    );
   }
+
   return {
-    links,
-    nodes: Object.keys(addresses).map((address) => {
-      return {
-        id: address,
-        group: 1,
-        usedVouchers: addresses[address].usedVouchers,
-        value: network.transactions.reduce((acc, v) => {
-          if (v.sender_address === address) {
-            acc = acc + 1;
-          }
-          if (v.recipient_address === address) {
-            acc = acc + 1;
-          }
-          return acc;
-        }, 1),
-      };
-    }),
+    links: Array.from(linkMap.values()),
+    nodes: Array.from(addresses.entries()).map(([address, data]) => ({
+      id: address,
+      group: 1,
+      usedVouchers: Object.fromEntries(data.usedVouchers),
+      value: data.transactionCount,
+    })),
   };
 };
+
+function updateAddress(
+  addresses: Map<
+    string,
+    {
+      usedVouchers: Map<string, number>;
+      transactionCount: number;
+    }
+  >,
+  address: string,
+  voucherAddress: string,
+  txDateTime: number
+) {
+  let addressData = addresses.get(address);
+
+  if (!addressData) {
+    addressData = {
+      usedVouchers: new Map(),
+      transactionCount: 1,
+    };
+    addresses.set(address, addressData);
+  } else {
+    addressData.transactionCount++;
+  }
+
+  // Update voucher usage
+  const existingVoucherTime = addressData.usedVouchers.get(voucherAddress);
+  if (existingVoucherTime === undefined || txDateTime < existingVoucherTime) {
+    addressData.usedVouchers.set(voucherAddress, txDateTime);
+  }
+}
+
 export type GraphData = {
   links: Links;
   nodes: Nodes;
@@ -108,34 +145,3 @@ export type Links = ReturnType<typeof generateGraphData>["links"];
 
 export type Node = Nodes[0];
 export type Link = Links[0];
-
-function addAddress(
-  addresses: {
-    [address: string]: { usedVouchers: { [address: string]: number } };
-  },
-  tx: Transaction,
-  address: string
-) {
-  if (!addresses[address]) {
-    addresses[address] = {
-      usedVouchers: {
-        [tx.voucher_address]: tx.date_block.getTime(),
-      },
-    };
-  } else {
-    if (
-      !Object.keys(addresses[address].usedVouchers).includes(tx.voucher_address)
-    ) {
-      addresses[address].usedVouchers[tx.voucher_address] =
-        tx.date_block.getTime();
-    } else if (
-      isBefore(
-        tx.date_block,
-        addresses[address].usedVouchers[tx.voucher_address]
-      )
-    ) {
-      addresses[address].usedVouchers[tx.voucher_address] =
-        tx.date_block.getTime();
-    }
-  }
-}
