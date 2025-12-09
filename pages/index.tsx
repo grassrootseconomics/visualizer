@@ -8,7 +8,7 @@ import {
 import { NetworkGraph2d } from "@components/network-graph/network-graph-2d";
 import { NetworkGraph3d } from "@components/network-graph/network-graph-3d";
 import { MultiSelect } from "@components/select";
-import { add, isAfter, sub } from "date-fns";
+import { add, isAfter } from "date-fns";
 import React from "react";
 import useSWR from "swr";
 import { DataResponse } from "./api/data";
@@ -41,19 +41,30 @@ function Dashboard() {
   });
   const [graphType, setGraphType] = React.useState<"2D" | "3D">("3D");
 
-  const [animate, setAnimate] = React.useState<Boolean>(false);
+  const [animate, setAnimate] = React.useState<boolean>(false);
   const [animationSpeed, setAnimationSpeed] = React.useState(24); // hours per second
   const [date, setDate] = React.useState(now.getTime());
 
-  const [dateRange, setDateRage] = React.useState({
-    start: date,
-    end: date,
-  });
+  // Graph physics settings - input values (immediate UI feedback)
+  // Defaults optimized for large graphs (1000+ nodes)
+  const [chargeStrengthInput, setChargeStrengthInput] = React.useState(-8);
+  const [linkDistanceInput, setLinkDistanceInput] = React.useState(30);
+  const [centerGravityInput, setCenterGravityInput] = React.useState(0.8);
 
-  // Graph physics settings
-  const [chargeStrength, setChargeStrength] = React.useState(-15);
-  const [linkDistance, setLinkDistance] = React.useState(20);
-  const [centerGravity, setCenterGravity] = React.useState(1);
+  // Debounced physics values (applied to graph after delay)
+  const [chargeStrength, setChargeStrength] = React.useState(-8);
+  const [linkDistance, setLinkDistance] = React.useState(30);
+  const [centerGravity, setCenterGravity] = React.useState(0.8);
+
+  // Debounce physics updates to prevent simulation reheat spam
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setChargeStrength(chargeStrengthInput);
+      setLinkDistance(linkDistanceInput);
+      setCenterGravity(centerGravityInput);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [chargeStrengthInput, linkDistanceInput, centerGravityInput]);
 
   // Filter to show only recently active nodes/links (within last 2 months)
   const [showRecentOnly, setShowRecentOnly] = React.useState(true);
@@ -66,9 +77,12 @@ function Dashboard() {
     physics: false,
   });
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-  };
+  const toggleSection = React.useCallback(
+    (section: keyof typeof expandedSections) => {
+      setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+    },
+    []
+  );
 
   // Update state when data is loaded
   React.useEffect(() => {
@@ -96,18 +110,22 @@ function Dashboard() {
         )
       ),
     };
-    // Calculate date range from ALL links, not filtered by current date
-    const start = newGraphData.links.reduce(
-      (acc, e) => Math.min(acc, e.date),
-      now.getTime()
-    );
-    const end = newGraphData.links.reduce(
-      (acc, e) => Math.max(acc, e.date),
-      now.getTime()
-    );
-    setDateRage({ start, end });
     setFilteredByToken(newGraphData);
   }, [data, selectedTokens]);
+
+  // Derive dateRange from filtered links (avoids redundant state)
+  const dateRange = React.useMemo(() => {
+    if (!filteredByToken.links.length) {
+      return { start: now.getTime(), end: now.getTime() };
+    }
+    let start = Infinity;
+    let end = 0;
+    for (const link of filteredByToken.links) {
+      if (link.date < start) start = link.date;
+      if (link.date > end) end = link.date;
+    }
+    return { start, end };
+  }, [filteredByToken.links]);
 
   React.useEffect(() => {
     if (animate) {
@@ -130,28 +148,32 @@ function Dashboard() {
     }
   }, [animate, animationSpeed, dateRange.start, dateRange.end]);
 
+  // Memoize available node IDs separately (only changes with token filter)
+  const availableNodeIds = React.useMemo(
+    () => new Set(filteredByToken.nodes.map((n) => n.id)),
+    [filteredByToken.nodes]
+  );
+
+  // Pre-calculate 2-month duration in milliseconds (constant)
+  const TWO_MONTHS_MS = 2 * 30 * 24 * 60 * 60 * 1000;
+
   const graphData = React.useMemo(() => {
-    const currentDate = new Date(date);
+    const currentTime = date;
 
     // Calculate the recency cutoff (2 months before the reference date)
-    // When showRecentOnly is enabled, only show links within this window
-    const recencyCutoff = showRecentOnly
-      ? sub(currentDate, { months: 2 }).getTime()
-      : 0;
-
-    // Get set of available node IDs from token filter
-    const availableNodeIds = new Set(filteredByToken.nodes.map((n) => n.id));
+    // Use numeric comparison instead of Date objects for performance
+    const recencyCutoff = showRecentOnly ? currentTime - TWO_MONTHS_MS : 0;
 
     // Filter links: must be in date range AND both source/target must exist
     // When showRecentOnly is enabled, also filter out links older than 2 months
+    // Using numeric comparisons instead of Date objects
     const activeLinks = filteredByToken.links.filter((link) => {
-      const linkDate = new Date(link.date);
-      const inDateRange = linkDate <= currentDate;
-      const hasValidNodes =
-        availableNodeIds.has(link.source) && availableNodeIds.has(link.target);
-      // Apply recency filter: link must be within the 2-month window
-      const isRecent = link.date >= recencyCutoff;
-      return inDateRange && hasValidNodes && isRecent;
+      // Short-circuit: check cheapest conditions first
+      if (link.date > currentTime) return false;
+      if (link.date < recencyCutoff) return false;
+      return (
+        availableNodeIds.has(link.source) && availableNodeIds.has(link.target)
+      );
     });
 
     // Get all addresses that have been active in transactions
@@ -170,7 +192,7 @@ function Dashboard() {
       nodes: filteredNodes,
       links: activeLinks,
     };
-  }, [filteredByToken.nodes, filteredByToken.links, date, showRecentOnly]);
+  }, [filteredByToken.links, filteredByToken.nodes, availableNodeIds, date, showRecentOnly]);
 
   // Show loading state
   if (isLoading) {
@@ -471,17 +493,17 @@ function Dashboard() {
                         Charge Strength
                       </label>
                       <span className="text-xs text-gray-700 font-medium">
-                        {chargeStrength}
+                        {chargeStrengthInput}
                       </span>
                     </div>
                     <input
                       min={-100}
                       max={0}
                       onChange={(e) =>
-                        setChargeStrength(parseInt(e.target.value))
+                        setChargeStrengthInput(parseInt(e.target.value))
                       }
                       type="range"
-                      value={chargeStrength}
+                      value={chargeStrengthInput}
                       className="w-full h-3 sm:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
                     />
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -496,17 +518,17 @@ function Dashboard() {
                         Link Distance
                       </label>
                       <span className="text-xs text-gray-700 font-medium">
-                        {linkDistance}px
+                        {linkDistanceInput}px
                       </span>
                     </div>
                     <input
                       min={5}
                       max={100}
                       onChange={(e) =>
-                        setLinkDistance(parseInt(e.target.value))
+                        setLinkDistanceInput(parseInt(e.target.value))
                       }
                       type="range"
-                      value={linkDistance}
+                      value={linkDistanceInput}
                       className="w-full h-3 sm:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
                     />
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -521,7 +543,7 @@ function Dashboard() {
                         Center Gravity
                       </label>
                       <span className="text-xs text-gray-700 font-medium">
-                        {centerGravity}
+                        {centerGravityInput}
                       </span>
                     </div>
                     <input
@@ -529,10 +551,10 @@ function Dashboard() {
                       max={5}
                       step={0.1}
                       onChange={(e) =>
-                        setCenterGravity(parseFloat(e.target.value))
+                        setCenterGravityInput(parseFloat(e.target.value))
                       }
                       type="range"
-                      value={centerGravity}
+                      value={centerGravityInput}
                       className="w-full h-3 sm:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
                     />
                     <div className="flex justify-between text-xs text-gray-400 mt-1">
@@ -544,9 +566,9 @@ function Dashboard() {
                   <button
                     className="w-full px-3 py-2 sm:py-1.5 text-sm text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 active:bg-gray-100 transition-colors"
                     onClick={() => {
-                      setChargeStrength(-15);
-                      setLinkDistance(20);
-                      setCenterGravity(1);
+                      setChargeStrengthInput(-8);
+                      setLinkDistanceInput(30);
+                      setCenterGravityInput(0.8);
                     }}
                   >
                     Reset to Defaults

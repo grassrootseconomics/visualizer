@@ -1,6 +1,6 @@
 import { Links, Nodes } from "@utils/render_graph";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
 import {
   createLinkLabel,
@@ -18,10 +18,45 @@ const ForceGraph3d = dynamic(() => import("react-force-graph-3d"), {
   ssr: false,
 });
 
+// Custom comparison to prevent unnecessary re-renders
+const arePropsEqual = (
+  prevProps: GraphComponentProps,
+  nextProps: GraphComponentProps
+): boolean => {
+  // Compare data lengths (cheap check for data changes)
+  if (
+    prevProps.graphData.nodes.length !== nextProps.graphData.nodes.length ||
+    prevProps.graphData.links.length !== nextProps.graphData.links.length
+  ) {
+    return false;
+  }
+  // Compare physics values
+  if (
+    prevProps.chargeStrength !== nextProps.chargeStrength ||
+    prevProps.linkDistance !== nextProps.linkDistance ||
+    prevProps.centerGravity !== nextProps.centerGravity
+  ) {
+    return false;
+  }
+  // Compare animate flag
+  if (prevProps.animate !== nextProps.animate) {
+    return false;
+  }
+  return true;
+};
+
 // Brighter pulse colors
 const PULSE_COLOR_CORE = new THREE.Color(0xffffff); // Pure white core
 const PULSE_COLOR_MID = new THREE.Color(0xffee66); // Bright yellow
 const PARTICLE_COLOR = new THREE.Color(0xffff99); // Bright yellow particle
+
+// Shared geometry pool - created once, reused everywhere
+// Using unit size geometries (radius=1) that get scaled at runtime
+const SHARED_GEOMETRIES = {
+  sphere: new THREE.SphereGeometry(1, 10, 10), // Reduced segments for performance
+  sphereLow: new THREE.SphereGeometry(1, 6, 6), // Lower detail for particles/trails
+  torus: new THREE.TorusGeometry(1, 0.08, 6, 20), // Unit torus for rings
+};
 
 // Store for dynamic objects that need updating
 interface PulseObjects {
@@ -29,13 +64,13 @@ interface PulseObjects {
   nodeGlows: Map<string, THREE.Group>;
 }
 
-// Helper to dispose of a THREE.Group and all its children
-function disposeGroup(group: THREE.Group) {
+// Helper to dispose materials only (geometries are shared/pooled)
+function disposeGroupMaterialsOnly(group: THREE.Group) {
   while (group.children.length > 0) {
     const child = group.children[0];
     group.remove(child);
     if (child instanceof THREE.Mesh) {
-      child.geometry.dispose();
+      // Only dispose material, NOT geometry (it's shared)
       if (Array.isArray(child.material)) {
         child.material.forEach((m) => m.dispose());
       } else {
@@ -45,13 +80,48 @@ function disposeGroup(group: THREE.Group) {
   }
 }
 
-export const NetworkGraph3d = ({
+// Helper to create a mesh using shared/pooled geometry
+function createPooledSphereMesh(
+  scale: number,
+  color: THREE.Color,
+  opacity: number,
+  lowDetail: boolean = false
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    lowDetail ? SHARED_GEOMETRIES.sphereLow : SHARED_GEOMETRIES.sphere,
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity })
+  );
+  mesh.scale.setScalar(scale);
+  return mesh;
+}
+
+// Helper to create a torus mesh using shared geometry
+function createPooledTorusMesh(
+  radius: number,
+  color: THREE.Color,
+  opacity: number
+): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    SHARED_GEOMETRIES.torus,
+    new THREE.MeshBasicMaterial({
+      color,
+      transparent: true,
+      opacity,
+      side: THREE.DoubleSide,
+    })
+  );
+  mesh.scale.setScalar(radius);
+  mesh.rotation.x = Math.PI / 2;
+  return mesh;
+}
+
+export const NetworkGraph3d = React.memo(function NetworkGraph3d({
   graphData: inputData,
   chargeStrength = DEFAULT_PHYSICS.chargeStrength,
   linkDistance = DEFAULT_PHYSICS.linkDistance,
   centerGravity = DEFAULT_PHYSICS.centerGravity,
   animate = true,
-}: GraphComponentProps) => {
+}: GraphComponentProps) {
   const graphRef = useRef<any>();
   const pulseObjectsRef = useRef<PulseObjects>({
     particles: new Map(),
@@ -143,30 +213,26 @@ export const NetworkGraph3d = ({
         // Update position
         glowGroup.position.set(node.x, node.y, node.z || 0);
 
-        // Clear old children and recreate
-        disposeGroup(glowGroup);
+        // Clear old children (only dispose materials, geometries are shared)
+        disposeGroupMaterialsOnly(glowGroup);
 
-        // Inner bright glow
-        const innerGlowGeom = new THREE.SphereGeometry(6 + intensity * 4, 16, 16);
-        const innerGlowMat = new THREE.MeshBasicMaterial({
-          color: PULSE_COLOR_CORE,
-          transparent: true,
-          opacity: intensity * 0.7,
-        });
-        const innerGlow = new THREE.Mesh(innerGlowGeom, innerGlowMat);
+        // Inner bright glow - using pooled geometry with scale
+        const innerGlow = createPooledSphereMesh(
+          6 + intensity * 4,
+          PULSE_COLOR_CORE,
+          intensity * 0.7
+        );
         glowGroup.add(innerGlow);
 
-        // Outer glow
-        const outerGlowGeom = new THREE.SphereGeometry(10 + intensity * 8, 16, 16);
-        const outerGlowMat = new THREE.MeshBasicMaterial({
-          color: PULSE_COLOR_MID,
-          transparent: true,
-          opacity: intensity * 0.4,
-        });
-        const outerGlow = new THREE.Mesh(outerGlowGeom, outerGlowMat);
+        // Outer glow - using pooled geometry with scale
+        const outerGlow = createPooledSphereMesh(
+          10 + intensity * 8,
+          PULSE_COLOR_MID,
+          intensity * 0.4
+        );
         glowGroup.add(outerGlow);
 
-        // Expanding rings
+        // Expanding rings - using pooled torus geometry
         const waveProgress = elapsed / PULSE_DURATION;
         for (let i = 0; i < 3; i++) {
           const ringProgress = (waveProgress + i * 0.25) % 1;
@@ -174,15 +240,11 @@ export const NetworkGraph3d = ({
           const ringOpacity = Math.pow(1 - ringProgress, 1.5) * intensity * 0.5;
 
           if (ringOpacity > 0.02) {
-            const ringGeom = new THREE.TorusGeometry(ringRadius, 0.8, 8, 32);
-            const ringMat = new THREE.MeshBasicMaterial({
-              color: PULSE_COLOR_MID,
-              transparent: true,
-              opacity: ringOpacity,
-              side: THREE.DoubleSide,
-            });
-            const ring = new THREE.Mesh(ringGeom, ringMat);
-            ring.rotation.x = Math.PI / 2;
+            const ring = createPooledTorusMesh(
+              ringRadius,
+              PULSE_COLOR_MID,
+              ringOpacity
+            );
             glowGroup.add(ring);
           }
         }
@@ -192,7 +254,7 @@ export const NetworkGraph3d = ({
       for (const nodeId of expiredNodeGlows) {
         const glow = pulseObjects.nodeGlows.get(nodeId);
         if (glow) {
-          disposeGroup(glow);
+          disposeGroupMaterialsOnly(glow);
           scene.remove(glow);
           pulseObjects.nodeGlows.delete(nodeId);
         }
@@ -233,8 +295,8 @@ export const NetworkGraph3d = ({
           scene.add(particleGroup);
         }
 
-        // Clear old particles
-        disposeGroup(particleGroup);
+        // Clear old particles (only dispose materials, geometries are shared)
+        disposeGroupMaterialsOnly(particleGroup);
 
         const sx = (source as any).x, sy = (source as any).y, sz = (source as any).z || 0;
         const tx = (target as any).x, ty = (target as any).y, tz = (target as any).z || 0;
@@ -255,29 +317,17 @@ export const NetworkGraph3d = ({
             const size = 2 + sizeCurve * 3;
             const opacity = sizeCurve * 0.9 * intensity;
 
-            // Main particle
-            const particleGeom = new THREE.SphereGeometry(size, 8, 8);
-            const particleMat = new THREE.MeshBasicMaterial({
-              color: PARTICLE_COLOR,
-              transparent: true,
-              opacity: opacity,
-            });
-            const particle = new THREE.Mesh(particleGeom, particleMat);
+            // Main particle - using pooled geometry
+            const particle = createPooledSphereMesh(size, PARTICLE_COLOR, opacity, true);
             particle.position.set(x, y, z);
             particleGroup.add(particle);
 
-            // Particle glow
-            const glowGeom = new THREE.SphereGeometry(size * 2.5, 8, 8);
-            const glowMat = new THREE.MeshBasicMaterial({
-              color: PULSE_COLOR_CORE,
-              transparent: true,
-              opacity: opacity * 0.5,
-            });
-            const glow = new THREE.Mesh(glowGeom, glowMat);
+            // Particle glow - using pooled geometry
+            const glow = createPooledSphereMesh(size * 2.5, PULSE_COLOR_CORE, opacity * 0.5, true);
             glow.position.set(x, y, z);
             particleGroup.add(glow);
 
-            // Trail
+            // Trail - using pooled geometry
             for (let t = 1; t <= 4; t++) {
               const trailProgress = progress - t * 0.025;
               if (trailProgress > 0) {
@@ -288,13 +338,7 @@ export const NetworkGraph3d = ({
                 const trailSize = size * (1 - t * 0.2);
                 const trailOpacity = opacity * (1 - t * 0.25);
 
-                const trailGeom = new THREE.SphereGeometry(trailSize, 6, 6);
-                const trailMat = new THREE.MeshBasicMaterial({
-                  color: PULSE_COLOR_MID,
-                  transparent: true,
-                  opacity: trailOpacity,
-                });
-                const trail = new THREE.Mesh(trailGeom, trailMat);
+                const trail = createPooledSphereMesh(trailSize, PULSE_COLOR_MID, trailOpacity, true);
                 trail.position.set(trailX, trailY, trailZ);
                 particleGroup.add(trail);
               }
@@ -307,7 +351,7 @@ export const NetworkGraph3d = ({
       for (const linkKey of expiredLinkParticles) {
         const particles = pulseObjects.particles.get(linkKey);
         if (particles) {
-          disposeGroup(particles);
+          disposeGroupMaterialsOnly(particles);
           scene.remove(particles);
           pulseObjects.particles.delete(linkKey);
         }
@@ -323,7 +367,7 @@ export const NetworkGraph3d = ({
       for (const nodeId of nodeGlowsToRemove) {
         const glow = pulseObjects.nodeGlows.get(nodeId);
         if (glow) {
-          disposeGroup(glow);
+          disposeGroupMaterialsOnly(glow);
           scene.remove(glow);
           pulseObjects.nodeGlows.delete(nodeId);
         }
@@ -338,7 +382,7 @@ export const NetworkGraph3d = ({
       for (const linkKey of particlesToRemove) {
         const particles = pulseObjects.particles.get(linkKey);
         if (particles) {
-          disposeGroup(particles);
+          disposeGroupMaterialsOnly(particles);
           scene.remove(particles);
           pulseObjects.particles.delete(linkKey);
         }
@@ -352,16 +396,16 @@ export const NetworkGraph3d = ({
     return () => {
       isRunning = false;
       cancelAnimationFrame(animationId);
-      // Cleanup all objects with proper disposal
+      // Cleanup all objects with proper disposal (only materials, geometries are pooled)
       const scene = sceneRef.current;
       const pulseObjects = pulseObjectsRef.current;
 
       pulseObjects.nodeGlows.forEach((glow) => {
-        disposeGroup(glow);
+        disposeGroupMaterialsOnly(glow);
         if (scene) scene.remove(glow);
       });
       pulseObjects.particles.forEach((particles) => {
-        disposeGroup(particles);
+        disposeGroupMaterialsOnly(particles);
         if (scene) scene.remove(particles);
       });
 
@@ -411,13 +455,17 @@ export const NetworkGraph3d = ({
     [getPulseIntensity, pulsingLinks]
   );
 
-  // Link width with pulse effect
+  // Link width based on transaction count (aggregated) + pulse effect
   const getLinkWidth = useCallback(
     (link: any) => {
       const linkKey = getLinkKey(link);
       const pulseTime = pulsingLinks.current.get(linkKey);
       const pulseIntensity = getPulseIntensity(pulseTime);
-      return 1 + pulseIntensity * 6;
+      // Base width scales with txCount (aggregated links are thicker)
+      // Use log scale to prevent extremely thick links
+      const txCount = link.txCount || 1;
+      const baseWidth = 0.5 + Math.log10(txCount + 1) * 1.5;
+      return baseWidth + pulseIntensity * 4;
     },
     [getPulseIntensity, pulsingLinks]
   );
@@ -429,7 +477,7 @@ export const NetworkGraph3d = ({
       enableNodeDrag={false}
       nodeLabel={(node: Nodes[0]) => createNodeLabel(node.id)}
       linkLabel={(link: Links[0]) =>
-        createLinkLabel(link.token_symbol, link.token_name)
+        createLinkLabel(link.token_symbol, link.token_name, link.txCount)
       }
       backgroundColor={GRAPH_CONFIG.backgroundColor}
       graphData={displayedData}
@@ -446,4 +494,4 @@ export const NetworkGraph3d = ({
       d3VelocityDecay={GRAPH_CONFIG.d3VelocityDecay}
     />
   );
-};
+}, arePropsEqual);

@@ -1,5 +1,5 @@
 import { Link, Nodes } from "@utils/render_graph";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   createLinkLabel,
   createNodeLabel,
@@ -12,13 +12,40 @@ import {
   useGraphForces,
 } from "./use-graph-data";
 
-export const NetworkGraph2d = ({
+// Custom comparison to prevent unnecessary re-renders
+const arePropsEqual = (
+  prevProps: GraphComponentProps,
+  nextProps: GraphComponentProps
+): boolean => {
+  // Compare data lengths (cheap check for data changes)
+  if (
+    prevProps.graphData.nodes.length !== nextProps.graphData.nodes.length ||
+    prevProps.graphData.links.length !== nextProps.graphData.links.length
+  ) {
+    return false;
+  }
+  // Compare physics values
+  if (
+    prevProps.chargeStrength !== nextProps.chargeStrength ||
+    prevProps.linkDistance !== nextProps.linkDistance ||
+    prevProps.centerGravity !== nextProps.centerGravity
+  ) {
+    return false;
+  }
+  // Compare animate flag
+  if (prevProps.animate !== nextProps.animate) {
+    return false;
+  }
+  return true;
+};
+
+export const NetworkGraph2d = React.memo(function NetworkGraph2d({
   graphData: inputData,
   chargeStrength = DEFAULT_PHYSICS.chargeStrength,
   linkDistance = DEFAULT_PHYSICS.linkDistance,
   centerGravity = DEFAULT_PHYSICS.centerGravity,
   animate = true,
-}: GraphComponentProps) => {
+}: GraphComponentProps) {
   const [ForceGraph2D, setForceGraph2D] = useState<any>(null);
   const graphRef = useRef<any>(null);
 
@@ -119,11 +146,15 @@ export const NetworkGraph2d = ({
         ctx.stroke();
       }
 
+      // Base width scales with txCount (aggregated links are thicker)
+      const txCount = link.txCount || 1;
+      const baseWidth = 0.3 + Math.log10(txCount + 1) * 0.8;
+
       ctx.beginPath();
       ctx.moveTo(source.x, source.y);
       ctx.lineTo(target.x, target.y);
       ctx.strokeStyle = link.color || "#999";
-      ctx.lineWidth = 0.5;
+      ctx.lineWidth = baseWidth;
       ctx.stroke();
     },
     [getPulseIntensity, pulsingLinks]
@@ -151,7 +182,7 @@ export const NetworkGraph2d = ({
       nodeId="id"
       enableNodeDrag={false}
       nodeLabel={(d: Nodes[0]) => createNodeLabel(d.id)}
-      linkLabel={(d: Link) => createLinkLabel(d?.token_symbol, d?.token_name)}
+      linkLabel={(d: Link) => createLinkLabel(d?.token_symbol, d?.token_name, d?.txCount)}
       nodeAutoColorBy={(n: Nodes[0]) => Object.keys(n.usedVouchers)[0]}
       backgroundColor={GRAPH_CONFIG.backgroundColor}
       graphData={displayedData}
@@ -165,4 +196,4 @@ export const NetworkGraph2d = ({
       d3VelocityDecay={GRAPH_CONFIG.d3VelocityDecay}
     />
   );
-};
+}, arePropsEqual);

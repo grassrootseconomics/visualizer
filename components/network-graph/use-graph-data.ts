@@ -60,20 +60,22 @@ export interface GraphComponentProps {
   animate?: Boolean;
 }
 
+// Graph simulation config - optimized for large graphs (1000+ nodes, 10K+ links)
 export const GRAPH_CONFIG = {
-  d3AlphaDecay: 0.02,
-  d3VelocityDecay: 0.3,
+  d3AlphaDecay: 0.08, // Faster cooling (was 0.02) - settles ~4x faster
+  d3VelocityDecay: 0.5, // Higher damping (was 0.3) - less oscillation
   backgroundColor: "rgba(0,0,0,0)",
 } as const;
 
-const MIN_LINKS_PER_TICK = 3;     // gentle minimum
-const MAX_LINKS_PER_TICK = 80;    // safety cap for huge graphs
-const TARGET_TICKS_FOR_QUEUE = 60; // "aim" to clear the queue in ~60 ticks
+const MIN_LINKS_PER_TICK = 10; // Increased from 3 for faster initial render
+const MAX_LINKS_PER_TICK = 150; // Increased from 80 for large graphs
+const TARGET_TICKS_FOR_QUEUE = 40; // Faster queue clearing (was 60)
 
+// Physics defaults - tuned for large graphs
 export const DEFAULT_PHYSICS = {
-  chargeStrength: -15,
-  linkDistance: 20,
-  centerGravity: 1,
+  chargeStrength: -8, // Reduced from -15 (less computation, O(n²) savings)
+  linkDistance: 30, // Increased from 20 (less tight packing = faster settling)
+  centerGravity: 0.8, // Slightly reduced for more spread
 } as const;
 
 // ─────────────────────────────────────────────────────────────
@@ -86,8 +88,14 @@ const LABEL_STYLE =
 export const createNodeLabel = (id: string) =>
   `<span style="${LABEL_STYLE}">${id}</span>`;
 
-export const createLinkLabel = (tokenSymbol: string, tokenName: string) =>
-  `<span style="${LABEL_STYLE}">${tokenSymbol} ${tokenName}</span>`;
+export const createLinkLabel = (
+  tokenSymbol: string,
+  tokenName: string,
+  txCount?: number
+) => {
+  const countStr = txCount && txCount > 1 ? ` (${txCount} txns)` : "";
+  return `<span style="${LABEL_STYLE}">${tokenSymbol} ${tokenName}${countStr}</span>`;
+};
 
 // ─────────────────────────────────────────────────────────────
 // Force helpers
@@ -184,7 +192,9 @@ type TimeoutId = ReturnType<typeof setTimeout>;
 export function getLinkKey(link: GraphLink): string {
   const src = getSourceId(link);
   const tgt = getTargetId(link);
-  return `${src}|${tgt}|${link.date}`;
+  // Use contract_address for unique key since links are now aggregated per source-target-contract
+  const contract = link.contract_address || link.date;
+  return `${src}|${tgt}|${contract}`;
 }
 
 export function getSourceId(link: GraphLink): string {

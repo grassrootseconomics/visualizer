@@ -35,6 +35,8 @@ export const generateGraphData = (network: NetworkData) => {
   }
 
   // Use Map for O(1) link lookups
+  // AGGREGATION: Links are keyed by source-target-contract (no timestamp)
+  // This combines multiple transactions between same nodes into one weighted link
   const linkMap = new Map<
     string,
     {
@@ -43,8 +45,10 @@ export const generateGraphData = (network: NetworkData) => {
       source: string;
       target: string;
       contract_address: string;
-      date: number;
-      value: number;
+      date: number; // Most recent transaction date
+      dateFirst: number; // First transaction date
+      value: number; // Total aggregated value
+      txCount: number; // Number of transactions aggregated
     }
   >();
 
@@ -60,20 +64,28 @@ export const generateGraphData = (network: NetworkData) => {
   // Process transactions once
   for (const tx of network.transactions) {
     const txDateTime = tx.date_block.getTime();
-    const linkKey = `${tx.sender_address}-${tx.recipient_address}-${tx.contract_address}-${txDateTime}`;
+    // AGGREGATION KEY: No timestamp - combines all transactions between same pair for same token
+    const linkKey = `${tx.sender_address}-${tx.recipient_address}-${tx.contract_address}`;
 
     // Handle links
     const existingLink = linkMap.get(linkKey);
-
     const voucher = voucherMap.get(tx.contract_address);
+    const txValue = getFormattedValue(
+      BigInt(tx.tx_value),
+      voucher?.token_decimals ?? 18
+    ).formattedNumber;
 
     if (existingLink) {
-      existingLink.value += getFormattedValue(
-        BigInt(tx.tx_value),
-        voucher.token_decimals
-      ).formattedNumber;
-      if (txDateTime < existingLink.date) {
+      // Aggregate: add value, update dates, increment count
+      existingLink.value += txValue;
+      existingLink.txCount++;
+      // Track most recent date for filtering
+      if (txDateTime > existingLink.date) {
         existingLink.date = txDateTime;
+      }
+      // Track first date
+      if (txDateTime < existingLink.dateFirst) {
+        existingLink.dateFirst = txDateTime;
       }
     } else {
       linkMap.set(linkKey, {
@@ -83,8 +95,9 @@ export const generateGraphData = (network: NetworkData) => {
         target: tx.recipient_address,
         contract_address: tx.contract_address,
         date: txDateTime,
-        value: getFormattedValue(BigInt(tx.tx_value), voucher.token_decimals)
-          .formattedNumber,
+        dateFirst: txDateTime,
+        value: txValue,
+        txCount: 1,
       });
     }
 
