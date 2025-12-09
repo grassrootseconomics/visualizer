@@ -1,13 +1,13 @@
 import { Kysely, PostgresDialect } from "kysely";
 import { Pool } from "pg";
+import { type DB as FederatedDB } from "./federated-db";
 import { type DB as GraphDB } from "./graph-db";
-import { type DB as IndexerDB } from "./indexer-db";
 
 const globalForDatabases = globalThis as unknown as {
   graphDB: Kysely<GraphDB> | undefined;
-  indexerDB: Kysely<IndexerDB> | undefined;
+  federatedDB: Kysely<FederatedDB> | undefined;
 };
-export type { GraphDB, IndexerDB };
+export type { FederatedDB, GraphDB };
 export const graphDB =
   globalForDatabases.graphDB ??
   new Kysely<GraphDB>({
@@ -18,15 +18,15 @@ export const graphDB =
       }),
     }),
   });
-export const indexerDB =
-  globalForDatabases.indexerDB ??
-  new Kysely<IndexerDB>({
+export const federatedDB =
+  globalForDatabases.federatedDB ??
+  new Kysely<FederatedDB>({
     dialect: new PostgresDialect({
       pool: new Pool({
-        connectionString: process.env.INDEXER_DB_URL,
+        connectionString: process.env.FEDERATED_DB_URL,
       }),
     }),
     // log: env.NODE_ENV !== "production" ? ["query"] : undefined,
   });
 globalForDatabases.graphDB = graphDB;
-globalForDatabases.indexerDB = indexerDB;
+globalForDatabases.federatedDB = federatedDB;

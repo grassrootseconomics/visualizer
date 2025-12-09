@@ -1,20 +1,18 @@
-import { Point } from "kysely-codegen";
+import { getFormattedValue } from "./units";
+
 type Voucher = {
-  symbol: string;
   id: number;
-  voucher_address: string;
-  voucher_name: string;
-  voucher_description: string;
-  active: boolean;
-  location_name: string;
-  geo: Point;
-  created_at: Date;
-  radius: number;
+  contract_address: string;
+  removed: boolean;
+  sink_address: string;
+  token_name: string;
+  token_symbol: string;
+  token_decimals: number;
 };
 type Transaction = {
   tx_type: string;
   id: number;
-  voucher_address: string;
+  contract_address: string;
   tx_hash: string;
   block_number: number;
   tx_index: number;
@@ -31,27 +29,27 @@ interface NetworkData {
 
 export const generateGraphData = (network: NetworkData) => {
   // Pre-index vouchers by address for O(1) lookup
-  const vouchersByAddress = new Map<string, Voucher>();
+  const voucherMap = new Map<string, Voucher>();
   for (const voucher of network.vouchers) {
-    vouchersByAddress.set(voucher.voucher_address, voucher);
+    voucherMap.set(voucher.contract_address, voucher);
   }
 
   // Use Map for O(1) link lookups
   const linkMap = new Map<
     string,
     {
-      voucher_name: string;
-      symbol: string;
+      token_name: string;
+      token_symbol: string;
       source: string;
       target: string;
-      voucher_address: string;
+      contract_address: string;
       date: number;
       value: number;
     }
   >();
 
   // Track addresses and their transaction counts
-  const addresses = new Map<
+  const nodeMap = new Map<
     string,
     {
       usedVouchers: Map<string, number>;
@@ -61,42 +59,48 @@ export const generateGraphData = (network: NetworkData) => {
 
   // Process transactions once
   for (const tx of network.transactions) {
-    const linkKey = `${tx.sender_address}-${tx.recipient_address}-${tx.voucher_address}`;
     const txDateTime = tx.date_block.getTime();
+    const linkKey = `${tx.sender_address}-${tx.recipient_address}-${tx.contract_address}-${txDateTime}`;
 
     // Handle links
     const existingLink = linkMap.get(linkKey);
+
+    const voucher = voucherMap.get(tx.contract_address);
+
     if (existingLink) {
-      existingLink.value++;
+      existingLink.value += getFormattedValue(
+        BigInt(tx.tx_value),
+        voucher.token_decimals
+      ).formattedNumber;
       if (txDateTime < existingLink.date) {
         existingLink.date = txDateTime;
       }
     } else {
-      const voucher = vouchersByAddress.get(tx.voucher_address);
       linkMap.set(linkKey, {
-        voucher_name: voucher?.voucher_name ?? "Unknown",
-        symbol: voucher?.symbol ?? "Unknown",
+        token_name: voucher?.token_name ?? "Unknown",
+        token_symbol: voucher?.token_symbol ?? "Unknown",
         source: tx.sender_address,
         target: tx.recipient_address,
-        voucher_address: tx.voucher_address,
+        contract_address: tx.contract_address,
         date: txDateTime,
-        value: 1,
+        value: getFormattedValue(BigInt(tx.tx_value), voucher.token_decimals)
+          .formattedNumber,
       });
     }
 
     // Handle addresses (both sender and recipient)
-    updateAddress(addresses, tx.sender_address, tx.voucher_address, txDateTime);
+    updateAddress(nodeMap, tx.sender_address, tx.contract_address, txDateTime);
     updateAddress(
-      addresses,
+      nodeMap,
       tx.recipient_address,
-      tx.voucher_address,
+      tx.contract_address,
       txDateTime
     );
   }
 
   return {
     links: Array.from(linkMap.values()),
-    nodes: Array.from(addresses.entries()).map(([address, data]) => ({
+    nodes: Array.from(nodeMap.entries()).map(([address, data]) => ({
       id: address,
       group: 1,
       usedVouchers: Object.fromEntries(data.usedVouchers),

@@ -1,47 +1,168 @@
 import { Link, Nodes } from "@utils/render_graph";
-import dynamic from "next/dynamic";
-import { useCallback, useRef } from "react";
-import { Types } from "./types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createLinkLabel,
+  createNodeLabel,
+  DEFAULT_PHYSICS,
+  getLinkKey,
+  GRAPH_CONFIG,
+  GraphComponentProps,
+  PULSE_DURATION,
+  useGraphData,
+  useGraphForces,
+} from "./use-graph-data";
 
-const ForceGraph2d = dynamic(() => import("react-force-graph-2d"), {
-  ssr: false,
-});
-export const NetworkGraph2d = (props: SarafuNetworkGraphProps) => {
-  const ref = useRef();
+export const NetworkGraph2d = ({
+  graphData: inputData,
+  chargeStrength = DEFAULT_PHYSICS.chargeStrength,
+  linkDistance = DEFAULT_PHYSICS.linkDistance,
+  centerGravity = DEFAULT_PHYSICS.centerGravity,
+  animate = true,
+}: GraphComponentProps) => {
+  const [ForceGraph2D, setForceGraph2D] = useState<any>(null);
+  const graphRef = useRef<any>(null);
 
-  const handleClick = useCallback(
-    (node) => {
-      // Node 0xAddress
-      navigator.clipboard.writeText(node.id);
-    },
-    [ref]
+  useEffect(() => {
+    import("react-force-graph-2d").then((mod) => {
+      setForceGraph2D(() => mod.default);
+    });
+  }, []);
+
+  const {
+    displayedData,
+    pulsingNodes,
+    pulsingLinks,
+    getPulseIntensity,
+    cleanupPulses,
+  } = useGraphData({
+    inputData,
+    is3D: false,
+    minLinkCount: 2,
+    animate,
+  });
+
+  const { configureForces } = useGraphForces(
+    graphRef,
+    chargeStrength,
+    linkDistance,
+    centerGravity
   );
 
+  const handleEngineTick = useCallback(() => {
+    configureForces();
+    cleanupPulses();
+  }, [configureForces, cleanupPulses]);
+
+  const handleClick = useCallback((node: Nodes[0]) => {
+    navigator.clipboard.writeText(node.id);
+  }, []);
+
+  const nodeCanvasObject = useCallback(
+    (node: any, ctx: CanvasRenderingContext2D, _globalScale: number) => {
+      const pulseTime = pulsingNodes.current.get(node.id);
+      const pulseIntensity = getPulseIntensity(pulseTime);
+
+      if (pulseTime && Date.now() - pulseTime > PULSE_DURATION) {
+        pulsingNodes.current.delete(node.id);
+      }
+
+      const baseRadius = 4;
+      const x = node.x || 0;
+      const y = node.y || 0;
+
+      if (pulseIntensity > 0) {
+        // Outer pulse ring
+        ctx.beginPath();
+        ctx.arc(x, y, baseRadius + pulseIntensity * 12, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgba(255, 200, 100, ${pulseIntensity * 0.4})`;
+        ctx.fill();
+
+        // Inner glow
+        ctx.beginPath();
+        ctx.arc(x, y, baseRadius + pulseIntensity * 6, 0, 2 * Math.PI);
+        ctx.fillStyle = `rgba(255, 150, 50, ${pulseIntensity * 0.6})`;
+        ctx.fill();
+      }
+
+      // Main node
+      ctx.beginPath();
+      ctx.arc(x, y, baseRadius, 0, 2 * Math.PI);
+      ctx.fillStyle = node.color || "#666";
+      ctx.fill();
+    },
+    [getPulseIntensity, pulsingNodes]
+  );
+
+  const linkCanvasObject = useCallback(
+    (link: any, ctx: CanvasRenderingContext2D, _globalScale: number) => {
+      const linkKey = getLinkKey(link);
+      const pulseTime = pulsingLinks.current.get(linkKey);
+      const pulseIntensity = getPulseIntensity(pulseTime);
+
+      if (pulseTime && Date.now() - pulseTime > PULSE_DURATION) {
+        pulsingLinks.current.delete(linkKey);
+      }
+
+      const source =
+        typeof link.source === "object" ? link.source : { x: 0, y: 0 };
+      const target =
+        typeof link.target === "object" ? link.target : { x: 0, y: 0 };
+
+      if (!source.x || !target.x) return;
+
+      if (pulseIntensity > 0) {
+        ctx.beginPath();
+        ctx.moveTo(source.x, source.y);
+        ctx.lineTo(target.x, target.y);
+        ctx.strokeStyle = `rgba(255, 180, 80, ${pulseIntensity * 0.8})`;
+        ctx.lineWidth = 0.5 + pulseIntensity * 4;
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(source.x, source.y);
+      ctx.lineTo(target.x, target.y);
+      ctx.strokeStyle = link.color || "#999";
+      ctx.lineWidth = 0.5;
+      ctx.stroke();
+    },
+    [getPulseIntensity, pulsingLinks]
+  );
+
+  if (!ForceGraph2D) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        Loading graph...
+      </div>
+    );
+  }
+
   return (
-    <ForceGraph2d
-      ref={ref}
+    <ForceGraph2D
+      ref={graphRef}
+      nodeId="id"
       enableNodeDrag={false}
-      nodeLabel={(d: Node & { id: number }) =>
-        `<span style="padding:4px 8px;border-radius: 8px;background-color: white;color: grey">${d.id}</span>`
-      }
-      linkLabel={(d: Link) =>
-        `<span style="padding:4px 8px;border-radius: 8px;background-color: white;color: grey">${
-          //@ts-ignore
-          `${d?.symbol} ${d?.voucher_name}`
-        }</span>`
-      }
-      nodeAutoColorBy={(n: Nodes[0]) => {
-        return Object.keys(n.usedVouchers)[0];
-      }}
-      backgroundColor="rgba(0,0,0,0)"
-      graphData={props.graphData}
+      nodeLabel={(d: Nodes[0]) => createNodeLabel(d.id)}
+      linkLabel={(d: Link) => createLinkLabel(d?.token_symbol, d?.token_name)}
+      nodeAutoColorBy={(n: Nodes[0]) => Object.keys(n.usedVouchers)[0]}
+      backgroundColor={GRAPH_CONFIG.backgroundColor}
+      graphData={displayedData}
       onNodeClick={handleClick}
-      linkAutoColorBy="voucher_address"
-      linkWidth={0.1}
+      onEngineTick={handleEngineTick}
+      linkAutoColorBy="contract_address"
+      nodeCanvasObject={nodeCanvasObject}
+      linkCanvasObject={linkCanvasObject}
+      cooldownTime={6000}
+      d3AlphaDecay={GRAPH_CONFIG.d3AlphaDecay}
+      d3VelocityDecay={GRAPH_CONFIG.d3VelocityDecay}
     />
   );
 };
-
-interface SarafuNetworkGraphProps {
-  graphData: Types.DataObject;
-}

@@ -32,7 +32,6 @@ export function Select<T>(props: SelectInterface<T>) {
     </select>
   );
 } // External Dependencies
-import { Listbox, Transition } from "@headlessui/react";
 import React from "react";
 
 const Selector = () => (
@@ -72,103 +71,171 @@ interface MultiSelectProps<T> {
   label: string;
   optionToLabel: (value: T) => string;
   optionToKey: (value: T) => string;
+  optionToSearchFields?: (value: T) => string[];
+  prioritizeSymbol?: string;
 }
 export function MultiSelect<T>(props: MultiSelectProps<T>) {
-  return (
-    <Listbox
-      as="div"
-      multiple
-      //className={className}
-      value={props.selected}
-      onChange={(event) => {
-        props.onChange(event);
-      }}
-    >
-      {({ open }) => (
-        <>
-          {/*label && (
-            <Listbox.Label className="mb-1 text-sm font-medium text-blue-gray-500">
-              {label}
-            </Listbox.Label>
-          )*/}
-          <div className="relative mt-1">
-            <span className="inline-block w-full rounded-md shadow-sm">
-              <Listbox.Button className="cursor-default relative w-full rounded-md border border-gray-300 bg-white pl-3 pr-10 py-2 text-left  transition ease-in-out duration-150">
-                {Array.isArray(props.selected) ? (
-                  <span className="block truncate text-black">
-                    {props.selected.length == props.options.length
-                      ? "All"
-                      : `${props.selected.length} Selected`}
-                  </span>
-                ) : (
-                  <span className="block truncate">
-                    {props.optionToLabel(props.selected)}
-                  </span>
-                )}
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
-                <span className="absolute inset-y-0 right-0 flex items-center pr-2 ml-3 pointer-events-none">
-                  <Selector />
-                </span>
-              </Listbox.Button>
-            </span>
-            <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg mb-11">
-              {/* bottom-0 will open the select menu up & mb-11 will put the dropup above the select option */}
-              <Transition
-                show={open}
-                leave="transition duration-100 ease-in"
-                leaveFrom="transform opacity-100"
-                leaveTo="transform opacity-0"
-              >
-                <Listbox.Options
-                  static
-                  className="py-1 overflow-auto text-base rounded-md max-h-56 ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm"
-                >
-                  {props.options.map((option) => {
-                    return (
-                      <Listbox.Option
-                        as={React.Fragment}
-                        key={props.optionToKey(option)}
-                        value={option}
-                      >
-                        {({ active, selected }) => {
-                          return (
-                            <li
-                              className={`${
-                                active
-                                  ? "text-white bg-indigo-600"
-                                  : "text-gray-900"
-                              } cursor-default select-none relative py-2 pl-3 pr-9`}
-                            >
-                              <div className="flex items-center">
-                                <span
-                                  className={`${
-                                    selected ? "font-semibold" : "font-normal"
-                                  } flex items-center block truncate`}
-                                >
-                                  {props.optionToLabel(option)}
-                                </span>
-                                {selected && (
-                                  <span
-                                    className={`${
-                                      active ? "text-white" : "text-indigo-600"
-                                    } absolute inset-y-0 right-0 flex items-center mr-3 pl-1.5`}
-                                  >
-                                    <Selected />
-                                  </span>
-                                )}
-                              </div>
-                            </li>
-                          );
-                        }}
-                      </Listbox.Option>
-                    );
-                  })}
-                </Listbox.Options>
-              </Transition>
+  // Close on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+        setSearchQuery("");
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  // Focus search input when opening
+  React.useEffect(() => {
+    if (isOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isOpen]);
+
+  // Toggle option selection
+  const toggleOption = (option: T) => {
+    const key = props.optionToKey(option);
+    const isSelected = props.selected.some(
+      (s) => props.optionToKey(s) === key
+    );
+    if (isSelected) {
+      props.onChange(props.selected.filter((s) => props.optionToKey(s) !== key));
+    } else {
+      props.onChange([...props.selected, option]);
+    }
+  };
+
+  // Check if option is selected
+  const isSelected = (option: T) => {
+    const key = props.optionToKey(option);
+    return props.selected.some((s) => props.optionToKey(s) === key);
+  };
+
+  // Filter and sort options based on search query
+  const filteredOptions = React.useMemo(() => {
+    let filtered = props.options;
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = props.options.filter((option) => {
+        // Use custom search fields if provided, otherwise fall back to label
+        const searchFields = props.optionToSearchFields
+          ? props.optionToSearchFields(option)
+          : [props.optionToLabel(option)];
+        return searchFields.some((field) =>
+          field.toLowerCase().includes(query)
+        );
+      });
+    }
+
+    // Sort with priority symbol first (e.g., cUSD)
+    if (props.prioritizeSymbol) {
+      const prioritySymbol = props.prioritizeSymbol.toLowerCase();
+      filtered = [...filtered].sort((a, b) => {
+        const aFields = props.optionToSearchFields
+          ? props.optionToSearchFields(a)
+          : [props.optionToLabel(a)];
+        const bFields = props.optionToSearchFields
+          ? props.optionToSearchFields(b)
+          : [props.optionToLabel(b)];
+
+        const aIsPriority = aFields.some(
+          (f) => f.toLowerCase() === prioritySymbol
+        );
+        const bIsPriority = bFields.some(
+          (f) => f.toLowerCase() === prioritySymbol
+        );
+
+        if (aIsPriority && !bIsPriority) return -1;
+        if (!aIsPriority && bIsPriority) return 1;
+        return 0;
+      });
+    }
+
+    return filtered;
+  }, [props.options, searchQuery, props.optionToSearchFields, props.optionToLabel, props.prioritizeSymbol]);
+
+  return (
+    <div ref={containerRef} className="relative mt-1">
+      <span className="inline-block w-full rounded-md shadow-sm">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="cursor-default relative w-full rounded-md border border-gray-300 bg-white pl-3 pr-10 py-2 text-left transition ease-in-out duration-150"
+        >
+          <span className="block truncate text-black">
+            {props.selected.length === props.options.length
+              ? "All"
+              : `${props.selected.length} Selected`}
+          </span>
+          <span className="absolute inset-y-0 right-0 flex items-center pr-2 ml-3 pointer-events-none">
+            <Selector />
+          </span>
+        </button>
+      </span>
+
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg mb-11">
+          <div className="rounded-md ring-1 ring-black ring-opacity-5">
+            {/* Search Input */}
+            <div className="p-2 border-b border-gray-200">
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search vouchers..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+              />
             </div>
+            <ul className="py-1 overflow-auto text-base max-h-56 focus:outline-none sm:text-sm">  
+              {filteredOptions.length === 0 ? (
+                <li className="text-gray-500 text-center py-2 px-3">
+                  No vouchers found
+                </li>
+              ) : (
+                filteredOptions.map((option) => {
+                  const selected = isSelected(option);
+                  return (
+                    <li
+                      key={props.optionToKey(option)}
+                      onClick={() => toggleOption(option)}
+                      className="text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-9 hover:text-white hover:bg-green-600"
+                    >
+                      <div className="flex items-center">
+                        <span
+                          className={`${
+                            selected ? "font-semibold" : "font-normal"
+                          } truncate`}
+                        >
+                          {props.optionToLabel(option)}
+                        </span>
+                        {selected && (
+                          <span className="text-green-600 absolute inset-y-0 right-0 flex items-center mr-3 pl-1.5">
+                            <Selected />
+                          </span>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
           </div>
-        </>
+        </div>
       )}
-    </Listbox>
+    </div>
   );
 }

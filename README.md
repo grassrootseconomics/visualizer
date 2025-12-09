@@ -6,12 +6,12 @@
 Requires DATABASE_URL to be set
 
 ```
-yarn && yarn dev
+pnpm && pnpm dev
 ```
 
 ## Build
 
 ```
-yarn && yarn build
-yarn start
+pnpm && pnpm build
+pnpm start
 ```
