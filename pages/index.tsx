@@ -1,6 +1,8 @@
 import {
   ChevronDownIcon,
   CloseIcon,
+  CopyIcon,
+  ExternalLinkIcon,
   GearIcon,
   PauseIcon,
   PauseIconSmall,
@@ -75,6 +77,14 @@ function Dashboard() {
   // Show/hide bottom timeline bar
   const [showTimelineBar, setShowTimelineBar] = React.useState(true);
 
+  // Selected node/link info panel
+  type SelectedInfo =
+    | { type: "node"; data: { id: string; value: number; usedVouchers: Record<string, { firstTxDate: number; txCount: number }> } }
+    | { type: "link"; data: { source: string; target: string; token_name: string; token_symbol: string; contract_address: string; txCount: number; value: number; date: number; dateFirst: number } }
+    | null;
+  const [selectedInfo, setSelectedInfo] = React.useState<SelectedInfo>(null);
+  const [copiedField, setCopiedField] = React.useState<string | null>(null);
+
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = React.useState({
     vouchers: true,
@@ -89,6 +99,45 @@ function Dashboard() {
     },
     []
   );
+
+  // Handle node click - show info panel
+  const handleNodeClick = React.useCallback((node: any) => {
+    setSelectedInfo({
+      type: "node",
+      data: {
+        id: node.id,
+        value: node.value,
+        usedVouchers: node.usedVouchers,
+      },
+    });
+  }, []);
+
+  // Handle link click - show info panel
+  const handleLinkClick = React.useCallback((link: any) => {
+    const sourceId = typeof link.source === "object" ? link.source.id : link.source;
+    const targetId = typeof link.target === "object" ? link.target.id : link.target;
+    setSelectedInfo({
+      type: "link",
+      data: {
+        source: sourceId,
+        target: targetId,
+        token_name: link.token_name,
+        token_symbol: link.token_symbol,
+        contract_address: link.contract_address,
+        txCount: link.txCount || 1,
+        value: link.value || 0,
+        date: link.date,
+        dateFirst: link.dateFirst,
+      },
+    });
+  }, []);
+
+  // Copy to clipboard helper
+  const copyToClipboard = React.useCallback((text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 2000);
+  }, []);
 
   // Update state when data is loaded
   React.useEffect(() => {
@@ -725,6 +774,8 @@ function Dashboard() {
           chargeStrength={chargeStrength}
           linkDistance={linkDistance}
           centerGravity={centerGravity}
+          onNodeClick={handleNodeClick}
+          onLinkClick={handleLinkClick}
         />
       ) : (
         <NetworkGraph3d
@@ -733,6 +784,8 @@ function Dashboard() {
           chargeStrength={chargeStrength}
           linkDistance={linkDistance}
           centerGravity={centerGravity}
+          onNodeClick={handleNodeClick}
+          onLinkClick={handleLinkClick}
         />
       )}
 
@@ -829,6 +882,192 @@ function Dashboard() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Panel */}
+      {selectedInfo && (
+        <div className="absolute top-4 left-4 z-20 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600">
+            <h2 className="text-white font-semibold">
+              {selectedInfo.type === "node" ? "Account" : "Transaction"}
+            </h2>
+            <CloseIcon
+              onClick={() => setSelectedInfo(null)}
+              className="w-5 h-5 cursor-pointer text-white/70 hover:text-white transition-colors"
+            />
+          </div>
+
+          <div className="p-4 space-y-3">
+            {selectedInfo.type === "node" ? (
+              <>
+                {/* Node Address */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Address</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-sm bg-gray-100 text-gray-500 px-2 py-1.5 rounded font-mono truncate">
+                      {selectedInfo.data.id}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(selectedInfo.data.id, "address")}
+                      className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                      title="Copy address"
+                    >
+                      <CopyIcon className={`w-4 h-4 ${copiedField === "address" ? "text-green-500" : "text-gray-500"}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Transaction count */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Total Transactions</label>
+                  <p className="text-sm font-medium text-gray-700">{selectedInfo.data.value}</p>
+                </div>
+
+                {/* Vouchers used with details */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">
+                    Vouchers Used ({Object.keys(selectedInfo.data.usedVouchers).length})
+                  </label>
+                  <div className="max-h-40 overflow-y-auto space-y-1.5">
+                    {Object.entries(selectedInfo.data.usedVouchers)
+                      .sort(([, a], [, b]) => b.txCount - a.txCount)
+                      .map(([contractAddress, { firstTxDate, txCount }]) => {
+                        const voucher = data?.vouchers.find(
+                          (v) => v.contract_address === contractAddress
+                        );
+                        return (
+                          <div
+                            key={contractAddress}
+                            className="flex items-center justify-between text-sm bg-gray-50 px-2 py-1.5 rounded"
+                          >
+                            <span className="text-gray-700 truncate flex-1">
+                              {voucher
+                                ? `${voucher.token_name} (${voucher.token_symbol})`
+                                : contractAddress.slice(0, 10) + "..."}
+                            </span>
+                            <div className="flex items-center gap-2 ml-2">
+                              <span className="text-xs font-medium text-emerald-600 whitespace-nowrap">
+                                {txCount} tx
+                              </span>
+                              <span className="text-xs text-gray-400 whitespace-nowrap">
+                                {new Date(firstTxDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+
+                {/* External link */}
+                <a
+                  href={`https://celoscan.io/address/${selectedInfo.data.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors text-sm font-medium"
+                >
+                  <ExternalLinkIcon className="w-4 h-4" />
+                  View on Celoscan
+                </a>
+              </>
+            ) : (
+              <>
+                {/* Token info */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Token</label>
+                  <p className="text-sm font-medium text-gray-700">
+                    {selectedInfo.data.token_name} ({selectedInfo.data.token_symbol})
+                  </p>
+                </div>
+
+                {/* Contract address */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Contract</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-sm text-gray-500 px-2 py-1.5 rounded font-mono truncate">
+                      {selectedInfo.data.contract_address}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(selectedInfo.data.contract_address, "contract")}
+                      className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                      title="Copy contract"
+                    >
+                      <CopyIcon className={`w-4 h-4 ${copiedField === "contract" ? "text-green-500" : "text-gray-500"}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Source */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">From</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs text-gray-500 px-2 py-1 rounded font-mono truncate">
+                      {selectedInfo.data.source}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(selectedInfo.data.source, "source")}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      title="Copy source"
+                    >
+                      <CopyIcon className={`w-3 h-3 ${copiedField === "source" ? "text-green-500" : "text-gray-500"}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Target */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">To</label>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xs text-gray-500 px-2 py-1 rounded font-mono truncate">
+                      {selectedInfo.data.target}
+                    </code>
+                    <button
+                      onClick={() => copyToClipboard(selectedInfo.data.target, "target")}
+                      className="p-1 hover:bg-gray-100  rounded transition-colors"
+                      title="Copy target"
+                    >
+                      <CopyIcon className={`w-3 h-3 ${copiedField === "target" ? "text-green-500" : "text-gray-500"}`} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Transactions</label>
+                    <p className="text-sm font-medium text-gray-700">{selectedInfo.data.txCount}</p>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500 block mb-1">Total Value</label>
+                    <p className="text-sm font-medium text-gray-700">
+                      {selectedInfo.data.value.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Date range */}
+                <div>
+                  <label className="text-xs text-gray-500 block mb-1">Activity Period</label>
+                  <p className="text-sm text-gray-700">
+                    {new Date(selectedInfo.data.dateFirst).toLocaleDateString()} - {new Date(selectedInfo.data.date).toLocaleDateString()}
+                  </p>
+                </div>
+
+                {/* External link */}
+                <a
+                  href={`https://sarafu.network/vouchers/${selectedInfo.data.contract_address}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors text-sm font-medium"
+                >
+                  <ExternalLinkIcon className="w-4 h-4" />
+                  View on Sarafu Network
+                </a>
+              </>
+            )}
           </div>
         </div>
       )}

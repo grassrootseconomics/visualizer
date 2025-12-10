@@ -58,6 +58,10 @@ export interface GraphComponentProps {
   centerGravity?: number;
   /** Whether to animate nodes/links appearing (default: true) */
   animate?: Boolean;
+  /** Callback when a node is clicked */
+  onNodeClick?: (node: GraphNode) => void;
+  /** Callback when a link is clicked */
+  onLinkClick?: (link: GraphLink) => void;
 }
 
 // Graph simulation config - optimized for large graphs (1000+ nodes, 10K+ links)
@@ -299,10 +303,43 @@ export function useGraphData({
   const linkQueue = useRef<GraphLink[]>([]);
   const timerRef = useRef<TimeoutId | null>(null);
 
+  // Flag to prevent timer callbacks from running after cleanup
+  const isActiveRef = useRef(true);
+
   // Store all valid links for position calculation
   const allValidLinks = useRef<GraphLink[]>([]);
 
+  // Cleanup on unmount - clear all refs to prevent memory leaks
+  useEffect(() => {
+    isActiveRef.current = true;
+
+    return () => {
+      isActiveRef.current = false;
+
+      // Clear timer
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      // Clear all Maps and arrays to release memory
+      pulsingNodes.current.clear();
+      pulsingLinks.current.clear();
+      stableNodes.current.clear();
+      stableLinks.current.clear();
+      nodeQueue.current = [];
+      linkQueue.current = [];
+      allValidLinks.current = [];
+    };
+  }, []);
+
   const processNextItem = useCallback(() => {
+    // Bail out if component is no longer active
+    if (!isActiveRef.current) {
+      timerRef.current = null;
+      return;
+    }
+
     setDisplayedData((prev) => {
       const displayedNodeIds = new Set(prev.nodes.map((n) => n.id));
       let newNodes = prev.nodes;
@@ -421,8 +458,8 @@ export function useGraphData({
       return { nodes: newNodes, links: newLinks };
     });
   
-    // Continue processing while work remains
-    if (nodeQueue.current.length > 0 || linkQueue.current.length > 0) {
+    // Continue processing while work remains (only if still active)
+    if (isActiveRef.current && (nodeQueue.current.length > 0 || linkQueue.current.length > 0)) {
       timerRef.current = setTimeout(processNextItem, 30);
     } else {
       timerRef.current = null;
@@ -550,7 +587,8 @@ export function useGraphData({
       nodeQueue.current = nodeQueue.current.concat(newNodes);
       linkQueue.current = linkQueue.current.concat(newLinks);
 
-      if (!timerRef.current && (newNodes.length > 0 || newLinks.length > 0)) {
+      // Only start timer if still active
+      if (isActiveRef.current && !timerRef.current && (newNodes.length > 0 || newLinks.length > 0)) {
         timerRef.current = setTimeout(processNextItem, 40);
       }
     } else if (newNodes.length > 0 || newLinks.length > 0) {

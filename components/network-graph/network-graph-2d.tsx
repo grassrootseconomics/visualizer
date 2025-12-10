@@ -45,6 +45,8 @@ export const NetworkGraph2d = React.memo(function NetworkGraph2d({
   linkDistance = DEFAULT_PHYSICS.linkDistance,
   centerGravity = DEFAULT_PHYSICS.centerGravity,
   animate = true,
+  onNodeClick,
+  onLinkClick,
 }: GraphComponentProps) {
   const [ForceGraph2D, setForceGraph2D] = useState<any>(null);
   const graphRef = useRef<any>(null);
@@ -80,9 +82,17 @@ export const NetworkGraph2d = React.memo(function NetworkGraph2d({
     cleanupPulses();
   }, [configureForces, cleanupPulses]);
 
-  const handleClick = useCallback((node: Nodes[0]) => {
-    navigator.clipboard.writeText(node.id);
-  }, []);
+  const handleNodeClick = useCallback((node: Nodes[0]) => {
+    if (onNodeClick) {
+      onNodeClick(node);
+    }
+  }, [onNodeClick]);
+
+  const handleLinkClick = useCallback((link: Link) => {
+    if (onLinkClick) {
+      onLinkClick(link);
+    }
+  }, [onLinkClick]);
 
   const nodeCanvasObject = useCallback(
     (node: any, ctx: CanvasRenderingContext2D, _globalScale: number) => {
@@ -186,7 +196,8 @@ export const NetworkGraph2d = React.memo(function NetworkGraph2d({
       nodeAutoColorBy={(n: Nodes[0]) => Object.keys(n.usedVouchers)[0]}
       backgroundColor={GRAPH_CONFIG.backgroundColor}
       graphData={displayedData}
-      onNodeClick={handleClick}
+      onNodeClick={handleNodeClick}
+      onLinkClick={handleLinkClick}
       onEngineTick={handleEngineTick}
       linkAutoColorBy="contract_address"
       nodeCanvasObject={nodeCanvasObject}

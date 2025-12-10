@@ -45,10 +45,17 @@ const arePropsEqual = (
   return true;
 };
 
-// Brighter pulse colors
+// Brighter pulse colors (shared instances - never dispose these)
 const PULSE_COLOR_CORE = new THREE.Color(0xffffff); // Pure white core
 const PULSE_COLOR_MID = new THREE.Color(0xffee66); // Bright yellow
 const PARTICLE_COLOR = new THREE.Color(0xffff99); // Bright yellow particle
+
+// Reusable color objects for getLinkColor to avoid per-frame allocations
+const REUSABLE_COLORS = {
+  bright: new THREE.Color(),
+  base: new THREE.Color(),
+  result: new THREE.Color(),
+};
 
 // Shared geometry pool - created once, reused everywhere
 // Using unit size geometries (radius=1) that get scaled at runtime
@@ -64,55 +71,130 @@ interface PulseObjects {
   nodeGlows: Map<string, THREE.Group>;
 }
 
-// Helper to dispose materials only (geometries are shared/pooled)
-function disposeGroupMaterialsOnly(group: THREE.Group) {
-  while (group.children.length > 0) {
-    const child = group.children[0];
-    group.remove(child);
-    if (child instanceof THREE.Mesh) {
-      // Only dispose material, NOT geometry (it's shared)
-      if (Array.isArray(child.material)) {
-        child.material.forEach((m) => m.dispose());
+// ─────────────────────────────────────────────────────────────
+// Object Pool for Three.js meshes - prevents memory churn
+// ─────────────────────────────────────────────────────────────
+interface PooledMesh extends THREE.Mesh {
+  __poolType?: "sphere" | "sphereLow" | "torus";
+}
+
+class MeshPool {
+  private spherePool: PooledMesh[] = [];
+  private sphereLowPool: PooledMesh[] = [];
+  private torusPool: PooledMesh[] = [];
+  private activeCount = 0;
+
+  acquire(
+    type: "sphere" | "sphereLow" | "torus",
+    color: THREE.Color,
+    opacity: number,
+    scale: number
+  ): PooledMesh {
+    let mesh: PooledMesh | undefined;
+    const pool =
+      type === "sphere"
+        ? this.spherePool
+        : type === "sphereLow"
+        ? this.sphereLowPool
+        : this.torusPool;
+
+    mesh = pool.pop();
+
+    if (!mesh) {
+      // Create new mesh only if pool is empty
+      const geometry =
+        type === "torus"
+          ? SHARED_GEOMETRIES.torus
+          : type === "sphereLow"
+          ? SHARED_GEOMETRIES.sphereLow
+          : SHARED_GEOMETRIES.sphere;
+
+      mesh = new THREE.Mesh(
+        geometry,
+        new THREE.MeshBasicMaterial({
+          color: color.clone(),
+          transparent: true,
+          opacity,
+          side: type === "torus" ? THREE.DoubleSide : THREE.FrontSide,
+        })
+      ) as PooledMesh;
+      mesh.__poolType = type;
+
+      if (type === "torus") {
+        mesh.rotation.x = Math.PI / 2;
+      }
+    } else {
+      // Reuse existing mesh - update its material properties
+      const material = mesh.material as THREE.MeshBasicMaterial;
+      material.color.copy(color);
+      material.opacity = opacity;
+      material.visible = true;
+    }
+
+    mesh.scale.setScalar(scale);
+    mesh.visible = true;
+    this.activeCount++;
+    return mesh;
+  }
+
+  release(mesh: PooledMesh): void {
+    mesh.visible = false;
+    if (mesh.parent) {
+      mesh.parent.remove(mesh);
+    }
+    this.activeCount--;
+
+    const pool =
+      mesh.__poolType === "sphere"
+        ? this.spherePool
+        : mesh.__poolType === "sphereLow"
+        ? this.sphereLowPool
+        : this.torusPool;
+
+    // Limit pool size to prevent unbounded growth
+    if (pool.length < 500) {
+      pool.push(mesh);
+    } else {
+      // Dispose if pool is full
+      (mesh.material as THREE.Material).dispose();
+    }
+  }
+
+  releaseGroup(group: THREE.Group): void {
+    // Release all children back to pool
+    const children = [...group.children] as PooledMesh[];
+    for (const child of children) {
+      if (child.__poolType) {
+        this.release(child);
       } else {
-        child.material.dispose();
+        group.remove(child);
+        if (child instanceof THREE.Mesh) {
+          (child.material as THREE.Material).dispose();
+        }
       }
     }
   }
-}
 
-// Helper to create a mesh using shared/pooled geometry
-function createPooledSphereMesh(
-  scale: number,
-  color: THREE.Color,
-  opacity: number,
-  lowDetail: boolean = false
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    lowDetail ? SHARED_GEOMETRIES.sphereLow : SHARED_GEOMETRIES.sphere,
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity })
-  );
-  mesh.scale.setScalar(scale);
-  return mesh;
-}
+  dispose(): void {
+    const allPools = [this.spherePool, this.sphereLowPool, this.torusPool];
+    for (const pool of allPools) {
+      for (const mesh of pool) {
+        (mesh.material as THREE.Material).dispose();
+      }
+      pool.length = 0;
+    }
+    this.activeCount = 0;
+  }
 
-// Helper to create a torus mesh using shared geometry
-function createPooledTorusMesh(
-  radius: number,
-  color: THREE.Color,
-  opacity: number
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(
-    SHARED_GEOMETRIES.torus,
-    new THREE.MeshBasicMaterial({
-      color,
-      transparent: true,
-      opacity,
-      side: THREE.DoubleSide,
-    })
-  );
-  mesh.scale.setScalar(radius);
-  mesh.rotation.x = Math.PI / 2;
-  return mesh;
+  getStats() {
+    return {
+      active: this.activeCount,
+      pooled:
+        this.spherePool.length +
+        this.sphereLowPool.length +
+        this.torusPool.length,
+    };
+  }
 }
 
 export const NetworkGraph3d = React.memo(function NetworkGraph3d({
@@ -121,6 +203,8 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
   linkDistance = DEFAULT_PHYSICS.linkDistance,
   centerGravity = DEFAULT_PHYSICS.centerGravity,
   animate = true,
+  onNodeClick,
+  onLinkClick,
 }: GraphComponentProps) {
   const graphRef = useRef<any>();
   const pulseObjectsRef = useRef<PulseObjects>({
@@ -128,6 +212,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
     nodeGlows: new Map(),
   });
   const sceneRef = useRef<THREE.Scene | null>(null);
+  const meshPoolRef = useRef<MeshPool>(new MeshPool());
 
   const {
     displayedData,
@@ -184,6 +269,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
       }
 
       const pulseObjects = pulseObjectsRef.current;
+      const meshPool = meshPoolRef.current;
       const currentDisplayedData = displayedDataRef.current;
       const now = Date.now();
 
@@ -213,26 +299,18 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
         // Update position
         glowGroup.position.set(node.x, node.y, node.z || 0);
 
-        // Clear old children (only dispose materials, geometries are shared)
-        disposeGroupMaterialsOnly(glowGroup);
+        // Release old children back to pool
+        meshPool.releaseGroup(glowGroup);
 
-        // Inner bright glow - using pooled geometry with scale
-        const innerGlow = createPooledSphereMesh(
-          6 + intensity * 4,
-          PULSE_COLOR_CORE,
-          intensity * 0.7
-        );
+        // Inner bright glow - using mesh pool
+        const innerGlow = meshPool.acquire("sphere", PULSE_COLOR_CORE, intensity * 0.7, 6 + intensity * 4);
         glowGroup.add(innerGlow);
 
-        // Outer glow - using pooled geometry with scale
-        const outerGlow = createPooledSphereMesh(
-          10 + intensity * 8,
-          PULSE_COLOR_MID,
-          intensity * 0.4
-        );
+        // Outer glow - using mesh pool
+        const outerGlow = meshPool.acquire("sphere", PULSE_COLOR_MID, intensity * 0.4, 10 + intensity * 8);
         glowGroup.add(outerGlow);
 
-        // Expanding rings - using pooled torus geometry
+        // Expanding rings - using mesh pool
         const waveProgress = elapsed / PULSE_DURATION;
         for (let i = 0; i < 3; i++) {
           const ringProgress = (waveProgress + i * 0.25) % 1;
@@ -240,11 +318,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
           const ringOpacity = Math.pow(1 - ringProgress, 1.5) * intensity * 0.5;
 
           if (ringOpacity > 0.02) {
-            const ring = createPooledTorusMesh(
-              ringRadius,
-              PULSE_COLOR_MID,
-              ringOpacity
-            );
+            const ring = meshPool.acquire("torus", PULSE_COLOR_MID, ringOpacity, ringRadius);
             glowGroup.add(ring);
           }
         }
@@ -254,7 +328,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
       for (const nodeId of expiredNodeGlows) {
         const glow = pulseObjects.nodeGlows.get(nodeId);
         if (glow) {
-          disposeGroupMaterialsOnly(glow);
+          meshPool.releaseGroup(glow);
           scene.remove(glow);
           pulseObjects.nodeGlows.delete(nodeId);
         }
@@ -295,8 +369,8 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
           scene.add(particleGroup);
         }
 
-        // Clear old particles (only dispose materials, geometries are shared)
-        disposeGroupMaterialsOnly(particleGroup);
+        // Release old particles back to pool
+        meshPool.releaseGroup(particleGroup);
 
         const sx = (source as any).x, sy = (source as any).y, sz = (source as any).z || 0;
         const tx = (target as any).x, ty = (target as any).y, tz = (target as any).z || 0;
@@ -317,17 +391,17 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
             const size = 2 + sizeCurve * 3;
             const opacity = sizeCurve * 0.9 * intensity;
 
-            // Main particle - using pooled geometry
-            const particle = createPooledSphereMesh(size, PARTICLE_COLOR, opacity, true);
+            // Main particle - using mesh pool
+            const particle = meshPool.acquire("sphereLow", PARTICLE_COLOR, opacity, size);
             particle.position.set(x, y, z);
             particleGroup.add(particle);
 
-            // Particle glow - using pooled geometry
-            const glow = createPooledSphereMesh(size * 2.5, PULSE_COLOR_CORE, opacity * 0.5, true);
+            // Particle glow - using mesh pool
+            const glow = meshPool.acquire("sphereLow", PULSE_COLOR_CORE, opacity * 0.5, size * 2.5);
             glow.position.set(x, y, z);
             particleGroup.add(glow);
 
-            // Trail - using pooled geometry
+            // Trail - using mesh pool
             for (let t = 1; t <= 4; t++) {
               const trailProgress = progress - t * 0.025;
               if (trailProgress > 0) {
@@ -338,7 +412,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
                 const trailSize = size * (1 - t * 0.2);
                 const trailOpacity = opacity * (1 - t * 0.25);
 
-                const trail = createPooledSphereMesh(trailSize, PULSE_COLOR_MID, trailOpacity, true);
+                const trail = meshPool.acquire("sphereLow", PULSE_COLOR_MID, trailOpacity, trailSize);
                 trail.position.set(trailX, trailY, trailZ);
                 particleGroup.add(trail);
               }
@@ -351,7 +425,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
       for (const linkKey of expiredLinkParticles) {
         const particles = pulseObjects.particles.get(linkKey);
         if (particles) {
-          disposeGroupMaterialsOnly(particles);
+          meshPool.releaseGroup(particles);
           scene.remove(particles);
           pulseObjects.particles.delete(linkKey);
         }
@@ -367,7 +441,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
       for (const nodeId of nodeGlowsToRemove) {
         const glow = pulseObjects.nodeGlows.get(nodeId);
         if (glow) {
-          disposeGroupMaterialsOnly(glow);
+          meshPool.releaseGroup(glow);
           scene.remove(glow);
           pulseObjects.nodeGlows.delete(nodeId);
         }
@@ -382,7 +456,7 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
       for (const linkKey of particlesToRemove) {
         const particles = pulseObjects.particles.get(linkKey);
         if (particles) {
-          disposeGroupMaterialsOnly(particles);
+          meshPool.releaseGroup(particles);
           scene.remove(particles);
           pulseObjects.particles.delete(linkKey);
         }
@@ -396,21 +470,25 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
     return () => {
       isRunning = false;
       cancelAnimationFrame(animationId);
-      // Cleanup all objects with proper disposal (only materials, geometries are pooled)
+      // Cleanup all objects and dispose the mesh pool
       const scene = sceneRef.current;
       const pulseObjects = pulseObjectsRef.current;
+      const meshPool = meshPoolRef.current;
 
       pulseObjects.nodeGlows.forEach((glow) => {
-        disposeGroupMaterialsOnly(glow);
+        meshPool.releaseGroup(glow);
         if (scene) scene.remove(glow);
       });
       pulseObjects.particles.forEach((particles) => {
-        disposeGroupMaterialsOnly(particles);
+        meshPool.releaseGroup(particles);
         if (scene) scene.remove(particles);
       });
 
       pulseObjects.nodeGlows.clear();
       pulseObjects.particles.clear();
+
+      // Dispose the pool itself on unmount
+      meshPool.dispose();
     };
   }, [pulsingNodes, pulsingLinks, getPulseIntensity]);
 
@@ -420,19 +498,18 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
   }, [configureForces, cleanupPulses]);
 
   const handleNodeClick = useCallback((node: Nodes[0]) => {
-    navigator.clipboard.writeText(node.id);
-    window.open(`https://celoscan.io/address/${node.id}`, "_blank");
-  }, []);
+    if (onNodeClick) {
+      onNodeClick(node);
+    }
+  }, [onNodeClick]);
 
   const handleLinkClick = useCallback((link: Links[0]) => {
-    navigator.clipboard.writeText(link.contract_address);
-    window.open(
-      `https://sarafu.network/vouchers/${link.contract_address}`,
-      "_blank"
-    );
-  }, []);
+    if (onLinkClick) {
+      onLinkClick(link);
+    }
+  }, [onLinkClick]);
 
-  // Link color with pulse effect
+  // Link color with pulse effect - uses reusable color objects to avoid allocations
   const getLinkColor = useCallback(
     (link: any) => {
       const linkKey = getLinkKey(link);
@@ -444,10 +521,11 @@ export const NetworkGraph3d = React.memo(function NetworkGraph3d({
       }
 
       if (pulseIntensity > 0) {
-        const brightColor = PULSE_COLOR_CORE.clone().lerp(PULSE_COLOR_MID, 1 - pulseIntensity);
-        const baseColor = new THREE.Color(link.color || 0x999999);
-        const resultColor = baseColor.clone().lerp(brightColor, pulseIntensity * 0.9);
-        return `#${resultColor.getHexString()}`;
+        // Reuse color objects instead of creating new ones every frame
+        REUSABLE_COLORS.bright.copy(PULSE_COLOR_CORE).lerp(PULSE_COLOR_MID, 1 - pulseIntensity);
+        REUSABLE_COLORS.base.set(link.color || 0x999999);
+        REUSABLE_COLORS.result.copy(REUSABLE_COLORS.base).lerp(REUSABLE_COLORS.bright, pulseIntensity * 0.9);
+        return `#${REUSABLE_COLORS.result.getHexString()}`;
       }
 
       return link.color || "#999999";

@@ -53,10 +53,11 @@ export const generateGraphData = (network: NetworkData) => {
   >();
 
   // Track addresses and their transaction counts
+  // usedVouchers now stores { firstTxDate, txCount } per voucher
   const nodeMap = new Map<
     string,
     {
-      usedVouchers: Map<string, number>;
+      usedVouchers: Map<string, { firstTxDate: number; txCount: number }>;
       transactionCount: number;
     }
   >();
@@ -126,7 +127,7 @@ function updateAddress(
   addresses: Map<
     string,
     {
-      usedVouchers: Map<string, number>;
+      usedVouchers: Map<string, { firstTxDate: number; txCount: number }>;
       transactionCount: number;
     }
   >,
@@ -146,10 +147,16 @@ function updateAddress(
     addressData.transactionCount++;
   }
 
-  // Update voucher usage
-  const existingVoucherTime = addressData.usedVouchers.get(voucherAddress);
-  if (existingVoucherTime === undefined || txDateTime < existingVoucherTime) {
-    addressData.usedVouchers.set(voucherAddress, txDateTime);
+  // Update voucher usage with transaction count and first date
+  const existingVoucher = addressData.usedVouchers.get(voucherAddress);
+  if (existingVoucher === undefined) {
+    addressData.usedVouchers.set(voucherAddress, { firstTxDate: txDateTime, txCount: 1 });
+  } else {
+    // Increment count and update first date if earlier
+    existingVoucher.txCount++;
+    if (txDateTime < existingVoucher.firstTxDate) {
+      existingVoucher.firstTxDate = txDateTime;
+    }
   }
 }
 

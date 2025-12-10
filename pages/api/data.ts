@@ -5,7 +5,7 @@ import { generateGraphData } from "@utils/render_graph";
 import { NextApiRequest, NextApiResponse } from "next";
 
 const FAUCET_ADDRESS = "0x5523058cdFfe5F3c1EaDADD5015E55C6E00fb439";
-const CACHE_KEY = "graph-data-2";
+const CACHE_KEY = "graph-data-3"; // Bumped for usedVouchers format change (now includes txCount)
 const CACHE_TTL_SECONDS = 86400 * 30; // 24 hours
 
 function fetchTransactions() {
