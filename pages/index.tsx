@@ -3,7 +3,10 @@ import {
   CloseIcon,
   GearIcon,
   PauseIcon,
+  PauseIconSmall,
   PlayIcon,
+  PlayIconSmall,
+  ResetIcon,
 } from "@components/icons";
 import { NetworkGraph2d } from "@components/network-graph/network-graph-2d";
 import { NetworkGraph3d } from "@components/network-graph/network-graph-3d";
@@ -69,6 +72,9 @@ function Dashboard() {
   // Filter to show only recently active nodes/links (within last 2 months)
   const [showRecentOnly, setShowRecentOnly] = React.useState(true);
 
+  // Show/hide bottom timeline bar
+  const [showTimelineBar, setShowTimelineBar] = React.useState(true);
+
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = React.useState({
     vouchers: true,
@@ -127,16 +133,47 @@ function Dashboard() {
     return { start, end };
   }, [filteredByToken.links]);
 
+  // Timeline histogram: transaction counts per time bucket
+  const NUM_BUCKETS = 60;
+  const timelineHistogram = React.useMemo(() => {
+    const { start, end } = dateRange;
+    const range = end - start;
+    if (range <= 0) return [];
+
+    const bucketSize = range / NUM_BUCKETS;
+    const buckets = new Array(NUM_BUCKETS).fill(0);
+
+    // Count transactions (using txCount for aggregated links)
+    for (const link of filteredByToken.links) {
+      const bucketIndex = Math.min(
+        Math.floor((link.date - start) / bucketSize),
+        NUM_BUCKETS - 1
+      );
+      if (bucketIndex >= 0) {
+        buckets[bucketIndex] += link.txCount || 1;
+      }
+    }
+
+    // Find max for normalization
+    const maxCount = Math.max(...buckets, 1);
+
+    return buckets.map((count, i) => ({
+      count,
+      normalized: count / maxCount,
+      startTime: start + i * bucketSize,
+      endTime: start + (i + 1) * bucketSize,
+    }));
+  }, [dateRange, filteredByToken.links]);
+
   React.useEffect(() => {
     if (animate) {
-      setDate(dateRange.start);
       const intervalId = setInterval(() => {
         setDate((prevDate) => {
           const nextDate = add(prevDate, { hours: animationSpeed }).getTime();
-          // Auto-stop when reaching end
+          // Auto-stop and reset when reaching end
           if (isAfter(nextDate, dateRange.end)) {
             setAnimate(false);
-            return prevDate;
+            return dateRange.start;
           }
           return nextDate;
         });
@@ -192,7 +229,13 @@ function Dashboard() {
       nodes: filteredNodes,
       links: activeLinks,
     };
-  }, [filteredByToken.links, filteredByToken.nodes, availableNodeIds, date, showRecentOnly]);
+  }, [
+    filteredByToken.links,
+    filteredByToken.nodes,
+    availableNodeIds,
+    date,
+    showRecentOnly,
+  ]);
 
   // Show loading state
   if (isLoading) {
@@ -223,16 +266,17 @@ function Dashboard() {
       <div className="w-screen h-[100vh] flex items-center justify-center">
         <div className="text-center">
           <div className="text-2xl text-gray-600 mb-4">No data available</div>
-          <div className="text-gray-500">
-            Graph data not found. Please run the cron job first.
-          </div>
         </div>
       </div>
     );
   }
   return (
     <div className="w-screen h-[100vh] overflow-hidden my-auto">
-      <div className="justify-center items-center absolute bottom-0 right-0 flex">
+      <div
+        className={`justify-center items-center absolute gap-4 md:gap-0 right-0 flex z-20 transition-all ${
+          showTimelineBar ? "top-2" : "bottom-0"
+        }`}
+      >
         {animate ? (
           <PauseIcon onClick={() => setAnimate(false)} />
         ) : (
@@ -242,7 +286,7 @@ function Dashboard() {
       </div>
 
       {optionsOpen && (
-        <div className="w-full sm:w-[360px] z-10 absolute inset-0 sm:inset-auto sm:top-0 sm:right-0 bg-white sm:m-3 sm:rounded-lg shadow-xl overflow-hidden flex flex-col">
+        <div className="w-full sm:w-[360px] z-20 absolute inset-0 sm:inset-auto sm:top-0 sm:right-0 bg-white sm:m-3 sm:rounded-lg shadow-xl overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600">
             <h1 className="text-white font-semibold text-lg">Settings</h1>
@@ -342,18 +386,35 @@ function Dashboard() {
               </button>
               {expandedSections.animation && (
                 <div className="p-3 sm:p-4 space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
-                    <button
-                      className={`w-full sm:w-auto px-4 py-2.5 sm:py-2 rounded-md font-medium transition-colors ${
-                        animate
-                          ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-green-500 hover:bg-green-600 text-white"
-                      }`}
-                      onClick={() => setAnimate((prev) => !prev)}
-                    >
-                      {animate ? "Stop" : "Play"}
-                    </button>
-                    <span className="text-sm font-medium text-gray-700 text-center sm:text-right">
+                  <div className="flex items-center gap-3 justify-between">
+                    <div className="flex gap-1">
+                      <button
+                        className={`p-2.5 rounded-md transition-colors ${
+                          animate
+                            ? "text-amber-500 hover:text-amber-600 bg-none"
+                            : "text-green-500 hover:text-green-600 bg-none"
+                        }`}
+                        onClick={() => setAnimate((prev) => !prev)}
+                        title={animate ? "Pause" : "Play"}
+                      >
+                        {animate ? (
+                          <PauseIconSmall className="w-5 h-5" />
+                        ) : (
+                          <PlayIconSmall className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        className="p-2.5 rounded-md transition-colors text-gray-300 hover:text-gray-400 "
+                        onClick={() => {
+                          setAnimate(false);
+                          setDate(dateRange.start);
+                        }}
+                        title="Reset"
+                      >
+                        <ResetIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">
                       {new Date(date).toLocaleDateString()}
                     </span>
                   </div>
@@ -366,14 +427,63 @@ function Dashboard() {
                         {new Date(dateRange.end).toLocaleDateString()}
                       </span>
                     </div>
-                    <input
-                      min={dateRange.start}
-                      max={dateRange.end}
-                      onChange={(e) => setDate(parseInt(e.target.value))}
-                      type="range"
-                      value={date}
-                      className="w-full h-3 sm:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
-                    />
+
+                    {/* Timeline Histogram */}
+                    {timelineHistogram.length > 0 && (
+                      <div className="relative h-12 mb-1 flex items-end gap-px rounded overflow-hidden bg-none">
+                        {timelineHistogram.map((bucket, i) => {
+                          const isPast = bucket.endTime <= date;
+                          const isCurrent =
+                            bucket.startTime <= date && bucket.endTime > date;
+                          return (
+                            <div
+                              key={i}
+                              className="flex-1 transition-all duration-150"
+                              style={{
+                                height: `${Math.max(
+                                  bucket.normalized * 100,
+                                  2
+                                )}%`,
+                                backgroundColor: isCurrent
+                                  ? "#10b981" // emerald-500
+                                  : isPast
+                                  ? "#6ee7b7" // emerald-300
+                                  : "#d1d5db", // gray-300
+                              }}
+                              title={`${bucket.count} transactions`}
+                            />
+                          );
+                        })}
+                        {/* Current position indicator */}
+                        <div
+                          className="absolute top-0 bottom-0 w-0.5 bg-emerald-600 pointer-events-none"
+                          style={{
+                            left: `${
+                              ((date - dateRange.start) /
+                                (dateRange.end - dateRange.start)) *
+                              100
+                            }%`,
+                          }}
+                        />
+                        <input
+                          min={dateRange.start}
+                          max={dateRange.end}
+                          onChange={(e) => setDate(parseInt(e.target.value))}
+                          type="range"
+                          value={date}
+                          className="absolute top-0 left-[-8px] right-[-10px] bottom-0 bg-transparent rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none
+         [&::-webkit-slider-thumb]:h-5
+         [&::-webkit-slider-thumb]:w-5
+         [&::-webkit-slider-thumb]:rounded-full
+         [&::-webkit-slider-thumb]:bg-transparent
+         [&::-moz-range-thumb]:appearance-none
+         [&::-moz-range-thumb]:h-5
+         [&::-moz-range-thumb]:w-5
+         [&::-moz-range-thumb]:rounded-full
+         [&::-moz-range-thumb]:bg-transparent"
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -464,6 +574,25 @@ function Dashboard() {
                         </span>
                         <p className="text-xs text-gray-500">
                           Only show nodes and links active in the last 2 months
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={showTimelineBar}
+                        onChange={(e) => setShowTimelineBar(e.target.checked)}
+                        className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                      />
+                      <div>
+                        <span className="text-sm text-gray-700 font-medium">
+                          Show timeline bar
+                        </span>
+                        <p className="text-xs text-gray-500">
+                          Display timeline controls at the bottom of the screen
                         </p>
                       </div>
                     </label>
@@ -605,6 +734,103 @@ function Dashboard() {
           linkDistance={linkDistance}
           centerGravity={centerGravity}
         />
+      )}
+
+      {/* Bottom Timeline Bar */}
+      {showTimelineBar && timelineHistogram.length > 0 && (
+        <div className="absolute bottom-0 left-0 right-0 z-10 bg-none ">
+          <div className="px-3 sm:px-4 py-2 sm:py-0">
+            <div className="flex items-center gap-2 sm:gap-4 mx-auto">
+              {/* Timeline with Histogram */}
+              <div className="flex-1 min-w-0">
+                {/* Date labels */}
+                <div className="flex justify-between text-xs text-gray-400 mb-1 px-0.5">
+                  <span className="hidden sm:inline">
+                    {new Date(dateRange.start).toLocaleDateString()}
+                  </span>
+                  <span className="font-medium text-gray-200">
+                    {new Date(date).toLocaleDateString()}
+                  </span>
+                  <span className="hidden sm:inline">
+                    {new Date(dateRange.end).toLocaleDateString()}
+                  </span>
+                </div>
+
+                {/* Histogram */}
+                <div className="relative h-8 sm:h-10 flex items-end gap-px rounded overflow-hidden bg-none">
+                  {timelineHistogram.map((bucket, i) => {
+                    const isPast = bucket.endTime <= date;
+                    const isCurrent =
+                      bucket.startTime <= date && bucket.endTime > date;
+                    return (
+                      <div
+                        key={i}
+                        className="flex-1 transition-all duration-150 cursor-pointer hover:opacity-80"
+                        style={{
+                          height: `${Math.max(bucket.normalized * 100, 2)}%`,
+                          backgroundColor: isCurrent
+                            ? "#10b981"
+                            : isPast
+                            ? "#6ee7b7"
+                            : "#d1d5db",
+                        }}
+                        title={`${bucket.count} transactions`}
+                        onClick={() => setDate(bucket.startTime)}
+                      />
+                    );
+                  })}
+                  {/* Current position indicator */}
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-emerald-600 pointer-events-none"
+                    style={{
+                      left: `${
+                        ((date - dateRange.start) /
+                          (dateRange.end - dateRange.start)) *
+                        100
+                      }%`,
+                    }}
+                  />
+                  {/* Slider */}
+                  <input
+                    min={dateRange.start}
+                    max={dateRange.end}
+                    onChange={(e) => setDate(parseInt(e.target.value))}
+                    type="range"
+                    value={date}
+                    className="absolute top-0 left-[-8px] right-[-10px] bottom-0 bg-transparent rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none
+         [&::-webkit-slider-thumb]:h-5
+         [&::-webkit-slider-thumb]:w-5
+         [&::-webkit-slider-thumb]:rounded-full
+         [&::-webkit-slider-thumb]:bg-transparent
+         [&::-moz-range-thumb]:appearance-none
+         [&::-moz-range-thumb]:h-5
+         [&::-moz-range-thumb]:w-5
+         [&::-moz-range-thumb]:rounded-full
+         [&::-moz-range-thumb]:bg-transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Speed Control (hidden on very small screens) */}
+              <div className="hidden md:flex flex-col items-start mx-8 gap-2 flex-shrink-0">
+                <label className="text-xs text-gray-400 whitespace-nowrap">
+                  Speed
+                </label>
+                <input
+                  min={1}
+                  max={168}
+                  onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
+                  type="range"
+                  value={animationSpeed}
+                  className="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+                />
+                <span className="text-xs text-gray-400 font-medium w-12">
+                  {animationSpeed}h/s
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
