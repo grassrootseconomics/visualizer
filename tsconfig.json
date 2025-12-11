@@ -21,11 +21,16 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "paths": {
+      "@/*": ["./*"],
       "@components/*": ["components/*"],
       "@pages/*": ["pages/*"],
       "@api/*": ["api/*"],
       "@db/*": ["db/*"],
-      "@utils/*": ["utils/*"]
+      "@utils/*": ["utils/*"],
+      "@types/*": ["types/*"],
+      "@config/*": ["config/*"],
+      "@lib/*": ["lib/*"],
+      "@hooks/*": ["hooks/*"]
     },
     "incremental": true
   },

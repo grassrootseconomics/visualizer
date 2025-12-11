@@ -1,15 +1,11 @@
-import { Links, Nodes } from "@utils/render_graph";
+/**
+ * Network graph component types
+ * Re-exports from centralized types for backward compatibility
+ */
+
+import type { GraphData, CameraPositionCallback } from "@/types/graph";
 
 export namespace Types {
-  export type DataObject = {
-    nodes: Nodes;
-    links: Links;
-  };
-  export type CameraPosition = {
-    cameraPosition: (
-      arg0: { x: number; y: number; z: number },
-      arg1: object,
-      arg2: number
-    ) => void;
-  };
+  export type DataObject = GraphData;
+  export type CameraPosition = CameraPositionCallback;
 }
