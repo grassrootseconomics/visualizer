@@ -14,6 +14,8 @@ export interface DisplaySectionProps {
   setShowRecentOnly: (show: boolean) => void;
   showTimelineBar: boolean;
   setShowTimelineBar: (show: boolean) => void;
+  showReports: boolean;
+  setShowReports: (show: boolean) => void;
 }
 
 export function DisplaySection({
@@ -25,6 +27,8 @@ export function DisplaySection({
   setShowRecentOnly,
   showTimelineBar,
   setShowTimelineBar,
+  showReports,
+  setShowReports,
 }: DisplaySectionProps) {
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -102,6 +106,25 @@ export function DisplaySection({
                 </span>
                 <p className="text-xs text-gray-500">
                   Display timeline controls at the bottom of the screen
+                </p>
+              </div>
+            </label>
+          </div>
+
+          <div>
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showReports}
+                onChange={(e) => setShowReports(e.target.checked)}
+                className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+              />
+              <div>
+                <span className="text-sm text-gray-700 font-medium">
+                  Show field reports
+                </span>
+                <p className="text-xs text-gray-500">
+                  Display approved field reports during animation
                 </p>
               </div>
             </label>

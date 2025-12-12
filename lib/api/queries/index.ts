@@ -4,3 +4,7 @@
 
 export { fetchTransactions, type TransactionRow } from "./transactions";
 export { fetchVouchers, type VoucherRow } from "./vouchers";
+export {
+  fetchApprovedFieldReports,
+  type FieldReportRow,
+} from "./field-reports";

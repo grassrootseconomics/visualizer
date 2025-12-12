@@ -1,5 +1,5 @@
+import { gunzipSync, gzipSync } from "zlib";
 import { redis } from "./kv";
-import { gzipSync, gunzipSync } from "zlib";
 
 /**
  * Debug logging that only runs in development
@@ -69,13 +69,19 @@ export async function cacheWithExpiry<T>(
     const originalSize = Buffer.byteLength(jsonStr, "utf-8");
     const compressedSize = Buffer.byteLength(compressed, "utf-8");
     debugLog(
-      `Compressing: ${(originalSize / 1024 / 1024).toFixed(2)} MB -> ${(compressedSize / 1024 / 1024).toFixed(2)} MB (${((1 - compressedSize / originalSize) * 100).toFixed(1)}% reduction)`
+      `Compressing: ${(originalSize / 1024 / 1024).toFixed(2)} MB -> ${(
+        compressedSize /
+        1024 /
+        1024
+      ).toFixed(2)} MB (${((1 - compressedSize / originalSize) * 100).toFixed(
+        1
+      )}% reduction)`
     );
     await redis.set(key, compressed, { ex: expiryInSeconds });
     debugLog(`Set cache: ${key}`);
   } catch (err) {
     // Cache write failed - log but return the value anyway
-    debugLog(`Failed to set cache: ${key}`, err);
+    debugLog(`Failed to set cache: ${key}`);
     // Continue execution - cache write failure should not break the application
   }
 

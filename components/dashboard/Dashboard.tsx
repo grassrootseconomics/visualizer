@@ -2,20 +2,23 @@
  * Main Dashboard component - orchestrates data fetching and child components
  */
 
+import { add, isAfter } from "date-fns";
 import React from "react";
 import useSWR from "swr";
-import { add, isAfter } from "date-fns";
 
 import { GearIcon, PauseIcon, PlayIcon } from "@components/icons";
 import { NetworkGraph2d } from "@components/network-graph/network-graph-2d";
 import { NetworkGraph3d } from "@components/network-graph/network-graph-3d";
 
-import { SettingsPanel, type ExpandedSections } from "./SettingsPanel";
+import { FieldReportsOverlay } from "./FieldReportsOverlay";
 import { InfoPanel, type SelectedInfo } from "./InfoPanel";
-import { TimelineBar } from "./TimelineBar";
 import type { TimelineBucket } from "./sections";
+import { SettingsPanel, type ExpandedSections } from "./SettingsPanel";
+import { TimelineBar } from "./TimelineBar";
 
+import { useFieldReports } from "@/hooks/dashboard";
 import type { DataResponse } from "@/pages/api/data";
+import type { FieldReportsResponse } from "@/types";
 import type { Voucher } from "@/types/voucher";
 
 // Fetcher function for SWR
@@ -29,10 +32,24 @@ const now = new Date();
 
 export function Dashboard() {
   // Data fetching with SWR
-  const { data, error, isLoading } = useSWR<DataResponse>("/api/data", fetcher, {
-    refreshInterval: 5 * 60 * 1000,
-    revalidateOnFocus: false,
-  });
+  const { data, error, isLoading } = useSWR<DataResponse>(
+    "/api/data",
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000,
+      revalidateOnFocus: false,
+    }
+  );
+
+  // Fetch field reports
+  const { data: reportsData } = useSWR<FieldReportsResponse>(
+    "/api/reports",
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000,
+      revalidateOnFocus: false,
+    }
+  );
 
   // Panel states
   const [optionsOpen, setOptionsOpen] = React.useState(false);
@@ -41,7 +58,9 @@ export function Dashboard() {
 
   // Token filtering
   const [selectedTokens, setSelectedTokens] = React.useState<Voucher[]>([]);
-  const [filteredByToken, setFilteredByToken] = React.useState<DataResponse["graphData"]>({
+  const [filteredByToken, setFilteredByToken] = React.useState<
+    DataResponse["graphData"]
+  >({
     nodes: [],
     links: [],
   });
@@ -53,6 +72,7 @@ export function Dashboard() {
 
   // Display options
   const [showRecentOnly, setShowRecentOnly] = React.useState(true);
+  const [showReports, setShowReports] = React.useState(false);
 
   // Physics settings - input values (immediate UI feedback)
   const [chargeStrengthInput, setChargeStrengthInput] = React.useState(-8);
@@ -69,12 +89,13 @@ export function Dashboard() {
   const [copiedField, setCopiedField] = React.useState<string | null>(null);
 
   // Collapsible sections state
-  const [expandedSections, setExpandedSections] = React.useState<ExpandedSections>({
-    vouchers: true,
-    animation: false,
-    display: false,
-    physics: false,
-  });
+  const [expandedSections, setExpandedSections] =
+    React.useState<ExpandedSections>({
+      vouchers: true,
+      animation: false,
+      display: false,
+      physics: false,
+    });
 
   // Debounce physics updates
   React.useEffect(() => {
@@ -101,12 +122,15 @@ export function Dashboard() {
     const newGraphData = {
       nodes: data.graphData.nodes.filter((node) =>
         selectedTokens.some((selectedToken) =>
-          Object.keys(node.usedVouchers).includes(selectedToken.contract_address)
+          Object.keys(node.usedVouchers).includes(
+            selectedToken.contract_address
+          )
         )
       ),
       links: data.graphData.links.filter((link) =>
         selectedTokens.some(
-          (selectedToken) => selectedToken.contract_address === link.contract_address
+          (selectedToken) =>
+            selectedToken.contract_address === link.contract_address
         )
       ),
     };
@@ -186,7 +210,10 @@ export function Dashboard() {
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
       if (e.code === "Space") {
@@ -238,15 +265,39 @@ export function Dashboard() {
       nodes: filteredNodes,
       links: activeLinks,
     };
-  }, [filteredByToken.links, filteredByToken.nodes, availableNodeIds, date, showRecentOnly]);
+  }, [
+    filteredByToken.links,
+    filteredByToken.nodes,
+    availableNodeIds,
+    date,
+    showRecentOnly,
+  ]);
+
+  // Selected voucher addresses for filtering
+  const selectedVoucherAddresses = React.useMemo(
+    () => new Set(selectedTokens.map((t) => t.contract_address)),
+    [selectedTokens]
+  );
+
+  // Field reports filtering
+  const { visibleReports, dismissReport, resetDismissed } = useFieldReports({
+    reports: reportsData?.reports ?? [],
+    currentDate: date,
+    selectedVoucherAddresses,
+    maxVisible: 3,
+  });
+
+  // Reset dismissed reports when animation restarts from beginning
+  React.useEffect(() => {
+    if (date === dateRange.start) {
+      resetDismissed();
+    }
+  }, [date, dateRange.start, resetDismissed]);
 
   // Callbacks
-  const toggleSection = React.useCallback(
-    (section: keyof ExpandedSections) => {
-      setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
-    },
-    []
-  );
+  const toggleSection = React.useCallback((section: keyof ExpandedSections) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  }, []);
 
   const handleNodeClick = React.useCallback((node: any) => {
     setSelectedInfo({
@@ -260,8 +311,10 @@ export function Dashboard() {
   }, []);
 
   const handleLinkClick = React.useCallback((link: any) => {
-    const sourceId = typeof link.source === "object" ? link.source.id : link.source;
-    const targetId = typeof link.target === "object" ? link.target.id : link.target;
+    const sourceId =
+      typeof link.source === "object" ? link.source.id : link.source;
+    const targetId =
+      typeof link.target === "object" ? link.target.id : link.target;
     setSelectedInfo({
       type: "link",
       data: {
@@ -335,13 +388,15 @@ export function Dashboard() {
         {animate ? (
           <PauseIcon onClick={() => setAnimate(false)} />
         ) : (
-          <PlayIcon onClick={() => {
-            // If at or past end, reset to start before playing
-            if (date >= dateRange.end) {
-              setDate(dateRange.start);
-            }
-            setAnimate(true);
-          }} />
+          <PlayIcon
+            onClick={() => {
+              // If at or past end, reset to start before playing
+              if (date >= dateRange.end) {
+                setDate(dateRange.start);
+              }
+              setAnimate(true);
+            }}
+          />
         )}
         <GearIcon onClick={() => setOptionsOpen((prev) => !prev)} />
       </div>
@@ -372,6 +427,8 @@ export function Dashboard() {
           setShowRecentOnly={setShowRecentOnly}
           showTimelineBar={showTimelineBar}
           setShowTimelineBar={setShowTimelineBar}
+          showReports={showReports}
+          setShowReports={setShowReports}
           physicsInputs={{
             chargeStrengthInput,
             linkDistanceInput,
@@ -405,6 +462,14 @@ export function Dashboard() {
           centerGravity={centerGravity}
           onNodeClick={handleNodeClick}
           onLinkClick={handleLinkClick}
+        />
+      )}
+
+      {/* Field Reports Overlay */}
+      {showReports && (
+        <FieldReportsOverlay
+          visibleReports={visibleReports}
+          onDismiss={dismissReport}
         />
       )}
 

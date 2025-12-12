@@ -27,3 +27,11 @@ export type {
   SelectedInfo,
   ExpandedSections,
 } from "./dashboard";
+
+// Field report types
+export type {
+  FieldReport,
+  FieldReportsResponse,
+  ReportVisibility,
+  VisibleReport,
+} from "./field-report";

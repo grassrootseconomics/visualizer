@@ -27,3 +27,9 @@ export type {
   UseGraphFilteringOptions,
   UseGraphFilteringReturn,
 } from "./useGraphFiltering";
+
+export { useFieldReports } from "./useFieldReports";
+export type {
+  UseFieldReportsOptions,
+  UseFieldReportsReturn,
+} from "./useFieldReports";

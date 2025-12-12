@@ -55,6 +55,8 @@ export interface SettingsPanelProps {
   setShowRecentOnly: (show: boolean) => void;
   showTimelineBar: boolean;
   setShowTimelineBar: (show: boolean) => void;
+  showReports: boolean;
+  setShowReports: (show: boolean) => void;
 
   // Physics
   physicsInputs: PhysicsInputs;
@@ -91,6 +93,8 @@ export function SettingsPanel({
   setShowRecentOnly,
   showTimelineBar,
   setShowTimelineBar,
+  showReports,
+  setShowReports,
   physicsInputs,
   setChargeStrengthInput,
   setLinkDistanceInput,
@@ -150,6 +154,8 @@ export function SettingsPanel({
           setShowRecentOnly={setShowRecentOnly}
           showTimelineBar={showTimelineBar}
           setShowTimelineBar={setShowTimelineBar}
+          showReports={showReports}
+          setShowReports={setShowReports}
         />
 
         {/* Physics Section */}
