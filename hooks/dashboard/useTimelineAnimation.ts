@@ -35,9 +35,14 @@ export interface UseTimelineAnimationReturn {
 export function useTimelineAnimation({
   dateRange,
 }: UseTimelineAnimationOptions): UseTimelineAnimationReturn {
-  const [date, setDate] = useState(() => Date.now());
+  const [date, setDate] = useState(() => dateRange.start);
   const [animate, setAnimate] = useState(false);
   const [animationSpeed, setAnimationSpeed] = useState(24); // hours per second
+
+  // Reset date to start when dateRange changes
+  useEffect(() => {
+    setDate(dateRange.start);
+  }, [dateRange.start]);
 
   // Animation loop
   useEffect(() => {

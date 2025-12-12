@@ -127,6 +127,13 @@ export function Dashboard() {
     return { start, end };
   }, [filteredByToken.links]);
 
+  // Initialize date to end of range when data loads (show most recent state)
+  React.useEffect(() => {
+    if (dateRange.end > 0 && dateRange.end !== dateRange.start) {
+      setDate(dateRange.end);
+    }
+  }, [dateRange.end]);
+
   // Timeline histogram
   const timelineHistogram = React.useMemo<TimelineBucket[]>(() => {
     const { start, end } = dateRange;
@@ -163,16 +170,17 @@ export function Dashboard() {
     const intervalId = setInterval(() => {
       setDate((prevDate) => {
         const nextDate = add(prevDate, { hours: animationSpeed }).getTime();
+        // If next step would go past end, pause at end
         if (isAfter(nextDate, dateRange.end)) {
           setAnimate(false);
-          return dateRange.start;
+          return dateRange.end;
         }
         return nextDate;
       });
     }, 1000);
 
     return () => clearInterval(intervalId);
-  }, [animate, animationSpeed, dateRange.start, dateRange.end]);
+  }, [animate, animationSpeed, dateRange.end]);
 
   // Memoize available node IDs
   const availableNodeIds = React.useMemo(
@@ -304,7 +312,13 @@ export function Dashboard() {
         {animate ? (
           <PauseIcon onClick={() => setAnimate(false)} />
         ) : (
-          <PlayIcon onClick={() => setAnimate(true)} />
+          <PlayIcon onClick={() => {
+            // If at or past end, reset to start before playing
+            if (date >= dateRange.end) {
+              setDate(dateRange.start);
+            }
+            setAnimate(true);
+          }} />
         )}
         <GearIcon onClick={() => setOptionsOpen((prev) => !prev)} />
       </div>

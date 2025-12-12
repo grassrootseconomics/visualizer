@@ -66,7 +66,13 @@ export function AnimationSection({
                     ? "text-amber-500 hover:text-amber-600 bg-none"
                     : "text-green-500 hover:text-green-600 bg-none"
                 }`}
-                onClick={() => setAnimate(!animate)}
+                onClick={() => {
+                  if (!animate && date >= dateRange.end) {
+                    // If starting from end, reset to beginning first
+                    setDate(dateRange.start);
+                  }
+                  setAnimate(!animate);
+                }}
                 title={animate ? "Pause" : "Play"}
               >
                 {animate ? (
