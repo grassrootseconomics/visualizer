@@ -182,6 +182,29 @@ export function Dashboard() {
     return () => clearInterval(intervalId);
   }, [animate, animationSpeed, dateRange.end]);
 
+  // Spacebar to toggle play/pause
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      if (e.code === "Space") {
+        e.preventDefault();
+        setAnimate((prev) => {
+          if (!prev && date >= dateRange.end) {
+            // If starting from end, reset to beginning first
+            setDate(dateRange.start);
+          }
+          return !prev;
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [date, dateRange.start, dateRange.end]);
+
   // Memoize available node IDs
   const availableNodeIds = React.useMemo(
     () => new Set(filteredByToken.nodes.map((n) => n.id)),
