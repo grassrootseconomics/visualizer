@@ -2,6 +2,9 @@
  * Settings panel section components barrel export
  */
 
+export { PoolSection } from "./PoolSection";
+export type { PoolSectionProps } from "./PoolSection";
+
 export { VoucherSection } from "./VoucherSection";
 export type { VoucherSectionProps } from "./VoucherSection";
 

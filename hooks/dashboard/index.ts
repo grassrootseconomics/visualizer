@@ -33,3 +33,9 @@ export type {
   UseFieldReportsOptions,
   UseFieldReportsReturn,
 } from "./useFieldReports";
+
+export { useImagePreloader } from "./useImagePreloader";
+export type {
+  UseImagePreloaderOptions,
+  UseImagePreloaderReturn,
+} from "./useImagePreloader";

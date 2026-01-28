@@ -8,3 +8,4 @@ export {
   fetchApprovedFieldReports,
   type FieldReportRow,
 } from "./field-reports";
+export { fetchPools, type PoolRow } from "./pools";

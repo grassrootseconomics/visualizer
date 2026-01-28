@@ -16,9 +16,9 @@ import type { TimelineBucket } from "./sections";
 import { SettingsPanel, type ExpandedSections } from "./SettingsPanel";
 import { TimelineBar } from "./TimelineBar";
 
-import { useFieldReports } from "@/hooks/dashboard";
+import { useFieldReports, useImagePreloader } from "@/hooks/dashboard";
 import type { DataResponse } from "@/pages/api/data";
-import type { FieldReportsResponse } from "@/types";
+import type { FieldReportsResponse, Pool, PoolsResponse } from "@/types";
 import type { Voucher } from "@/types/voucher";
 
 // Fetcher function for SWR
@@ -51,10 +51,23 @@ export function Dashboard() {
     }
   );
 
+  // Fetch pools
+  const { data: poolsData, isLoading: poolsLoading } = useSWR<PoolsResponse>(
+    "/api/pools",
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000,
+      revalidateOnFocus: false,
+    }
+  );
+
   // Panel states
   const [optionsOpen, setOptionsOpen] = React.useState(false);
   const [graphType, setGraphType] = React.useState<"2D" | "3D">("3D");
   const [showTimelineBar, setShowTimelineBar] = React.useState(true);
+
+  // Pool filtering
+  const [selectedPools, setSelectedPools] = React.useState<Pool[]>([]);
 
   // Token filtering
   const [selectedTokens, setSelectedTokens] = React.useState<Voucher[]>([]);
@@ -91,6 +104,7 @@ export function Dashboard() {
   // Collapsible sections state
   const [expandedSections, setExpandedSections] =
     React.useState<ExpandedSections>({
+      pools: false,
       vouchers: true,
       animation: false,
       display: false,
@@ -107,6 +121,23 @@ export function Dashboard() {
     return () => clearTimeout(timer);
   }, [chargeStrengthInput, linkDistanceInput, centerGravityInput]);
 
+  // Compute available vouchers based on selected pools
+  const availableVouchers = React.useMemo(() => {
+    if (!data?.vouchers) return [];
+    if (selectedPools.length === 0) return data.vouchers;
+
+    // Union of all allowed tokens from selected pools
+    const allowedSet = new Set<string>();
+    for (const pool of selectedPools) {
+      for (const token of pool.allowed_tokens) {
+        allowedSet.add(token.toLowerCase());
+      }
+    }
+    return data.vouchers.filter((v) =>
+      allowedSet.has(v.contract_address.toLowerCase())
+    );
+  }, [data?.vouchers, selectedPools]);
+
   // Initialize selected tokens when data loads
   React.useEffect(() => {
     if (data) {
@@ -114,6 +145,26 @@ export function Dashboard() {
       setFilteredByToken(data.graphData);
     }
   }, [data]);
+
+  // Auto-select pool tokens when pools change
+  React.useEffect(() => {
+    if (!data?.vouchers) return;
+
+    if (selectedPools.length > 0) {
+      // Union of all allowed tokens from selected pools
+      const allowedSet = new Set<string>();
+      for (const pool of selectedPools) {
+        for (const token of pool.allowed_tokens) {
+          allowedSet.add(token.toLowerCase());
+        }
+      }
+      const poolTokens = data.vouchers.filter((v) =>
+        allowedSet.has(v.contract_address.toLowerCase())
+      );
+      setSelectedTokens(poolTokens);
+    }
+    // When no pools selected, keep current selection
+  }, [selectedPools, data?.vouchers]);
 
   // Filter graph data by selected tokens
   React.useEffect(() => {
@@ -287,12 +338,20 @@ export function Dashboard() {
     maxVisible: 3,
   });
 
-  // Reset dismissed reports when animation restarts from beginning
+  // Image preloading for field reports
+  const { resetPreloaded } = useImagePreloader({
+    reports: reportsData?.reports ?? [],
+    currentDate: date,
+    selectedVoucherAddresses,
+  });
+
+  // Reset dismissed reports and preloaded images when animation restarts from beginning
   React.useEffect(() => {
     if (date === dateRange.start) {
       resetDismissed();
+      resetPreloaded();
     }
-  }, [date, dateRange.start, resetDismissed]);
+  }, [date, dateRange.start, resetDismissed, resetPreloaded]);
 
   // Callbacks
   const toggleSection = React.useCallback((section: keyof ExpandedSections) => {
@@ -410,8 +469,12 @@ export function Dashboard() {
           voucherCount={selectedTokens.length}
           expandedSections={expandedSections}
           toggleSection={toggleSection}
+          pools={poolsData?.pools ?? []}
+          poolsLoading={poolsLoading}
+          selectedPools={selectedPools}
+          onSelectPools={setSelectedPools}
           selectedTokens={selectedTokens}
-          allVouchers={data.vouchers}
+          allVouchers={availableVouchers}
           onSelectTokens={setSelectedTokens}
           date={date}
           setDate={setDate}

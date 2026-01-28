@@ -35,3 +35,6 @@ export type {
   ReportVisibility,
   VisibleReport,
 } from "./field-report";
+
+// Pool types
+export type { Pool, PoolsResponse } from "./pool";

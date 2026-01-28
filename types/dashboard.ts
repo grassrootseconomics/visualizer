@@ -26,6 +26,7 @@ export type SelectedInfo =
   | null;
 
 export interface ExpandedSections {
+  pools: boolean;
   vouchers: boolean;
   animation: boolean;
   display: boolean;

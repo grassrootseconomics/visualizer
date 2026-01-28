@@ -44,6 +44,7 @@ interface MultiSelectProps<T> {
   optionToKey: (value: T) => string;
   optionToSearchFields?: (value: T) => string[];
   prioritizeSymbol?: string;
+  disabled?: boolean;
 }
 
 export function MultiSelect<T>(props: MultiSelectProps<T>) {
@@ -61,6 +62,7 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
     optionToKey,
     optionToSearchFields,
     prioritizeSymbol,
+    disabled,
   } = props;
 
   // Close on click outside
@@ -153,8 +155,11 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
       <span className="inline-block w-full rounded-md shadow-sm">
         <button
           type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className="cursor-default relative w-full rounded-md border border-gray-300 bg-white pl-3 pr-10 py-2 text-left transition ease-in-out duration-150"
+          onClick={() => !disabled && setIsOpen(!isOpen)}
+          disabled={disabled}
+          className={`cursor-default relative w-full rounded-md border border-gray-300 bg-white pl-3 pr-10 py-2 text-left transition ease-in-out duration-150 ${
+            disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : ""
+          }`}
         >
           <span className="block truncate text-black">
             {selected.length === options.length

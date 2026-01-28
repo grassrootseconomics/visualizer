@@ -6,16 +6,19 @@ import React from "react";
 import { CloseIcon } from "@components/icons";
 import { StatsBar } from "./StatsBar";
 import {
+  PoolSection,
   VoucherSection,
   AnimationSection,
   DisplaySection,
   PhysicsSection,
 } from "./sections";
 import type { TimelineBucket } from "./sections";
+import type { Pool } from "@/types";
 import type { Voucher } from "@/types/voucher";
 import type { DateRange, PhysicsInputs } from "@hooks/dashboard";
 
 export interface ExpandedSections {
+  pools: boolean;
   vouchers: boolean;
   animation: boolean;
   display: boolean;
@@ -31,9 +34,17 @@ export interface SettingsPanelProps {
   linkCount: number;
   voucherCount: number;
 
-  // Vouchers
+  // Sections
   expandedSections: ExpandedSections;
   toggleSection: (section: keyof ExpandedSections) => void;
+
+  // Pools
+  pools: Pool[];
+  poolsLoading?: boolean;
+  selectedPools: Pool[];
+  onSelectPools: (pools: Pool[]) => void;
+
+  // Vouchers
   selectedTokens: Voucher[];
   allVouchers: Voucher[];
   onSelectTokens: (tokens: Voucher[]) => void;
@@ -76,6 +87,10 @@ export function SettingsPanel({
   voucherCount,
   expandedSections,
   toggleSection,
+  pools,
+  poolsLoading,
+  selectedPools,
+  onSelectPools,
   selectedTokens,
   allVouchers,
   onSelectTokens,
@@ -119,6 +134,16 @@ export function SettingsPanel({
           nodeCount={nodeCount}
           linkCount={linkCount}
           voucherCount={voucherCount}
+        />
+
+        {/* Pool Section */}
+        <PoolSection
+          expanded={expandedSections.pools}
+          onToggle={() => toggleSection("pools")}
+          pools={pools}
+          selectedPools={selectedPools}
+          onSelectPools={onSelectPools}
+          isLoading={poolsLoading}
         />
 
         {/* Vouchers Section */}
