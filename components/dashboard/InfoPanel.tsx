@@ -159,7 +159,7 @@ function NodeInfoContent({
         </div>
       </div>
 
-      {/* External link */}
+      {/* External links */}
       <a
         href={`https://celoscan.io/address/${data.id}`}
         target="_blank"
@@ -168,6 +168,15 @@ function NodeInfoContent({
       >
         <ExternalLinkIcon className="w-4 h-4" />
         View on Celoscan
+      </a>
+      <a
+        href={`https://sarafu.network/users/${data.id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors text-sm font-medium"
+      >
+        <ExternalLinkIcon className="w-4 h-4" />
+        View on Sarafu Network
       </a>
     </>
   );

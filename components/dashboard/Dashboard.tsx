@@ -63,7 +63,7 @@ export function Dashboard() {
 
   // Panel states
   const [optionsOpen, setOptionsOpen] = React.useState(false);
-  const [graphType, setGraphType] = React.useState<"2D" | "3D">("3D");
+  const [graphType, setGraphType] = React.useState<"2D" | "3D">("2D");
   const [showTimelineBar, setShowTimelineBar] = React.useState(true);
 
   // Pool filtering
@@ -85,7 +85,7 @@ export function Dashboard() {
 
   // Display options
   const [showRecentOnly, setShowRecentOnly] = React.useState(true);
-  const [showReports, setShowReports] = React.useState(false);
+  const [showReports, setShowReports] = React.useState(true);
 
   // Physics settings - input values (immediate UI feedback)
   const [chargeStrengthInput, setChargeStrengthInput] = React.useState(-8);
