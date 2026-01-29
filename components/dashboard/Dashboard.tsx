@@ -106,7 +106,7 @@ export function Dashboard() {
     React.useState<ExpandedSections>({
       pools: false,
       vouchers: true,
-      animation: false,
+      animation: true,
       display: false,
       physics: false,
     });

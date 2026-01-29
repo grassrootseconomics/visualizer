@@ -136,6 +136,20 @@ export function SettingsPanel({
           voucherCount={voucherCount}
         />
 
+        {/* Animation Section */}
+        <AnimationSection
+          expanded={expandedSections.animation}
+          onToggle={() => toggleSection("animation")}
+          date={date}
+          setDate={setDate}
+          animate={animate}
+          setAnimate={setAnimate}
+          animationSpeed={animationSpeed}
+          setAnimationSpeed={setAnimationSpeed}
+          dateRange={dateRange}
+          timelineHistogram={timelineHistogram}
+        />
+
         {/* Pool Section */}
         <PoolSection
           expanded={expandedSections.pools}
@@ -153,20 +167,6 @@ export function SettingsPanel({
           selectedTokens={selectedTokens}
           allVouchers={allVouchers}
           onSelectTokens={onSelectTokens}
-        />
-
-        {/* Animation Section */}
-        <AnimationSection
-          expanded={expandedSections.animation}
-          onToggle={() => toggleSection("animation")}
-          date={date}
-          setDate={setDate}
-          animate={animate}
-          setAnimate={setAnimate}
-          animationSpeed={animationSpeed}
-          setAnimationSpeed={setAnimationSpeed}
-          dateRange={dateRange}
-          timelineHistogram={timelineHistogram}
         />
 
         {/* Display Options Section */}
