@@ -330,19 +330,20 @@ export function Dashboard() {
     [selectedTokens]
   );
 
+  // Image preloading for field reports
+  const { isImageLoaded, resetPreloaded } = useImagePreloader({
+    reports: reportsData?.reports ?? [],
+    currentDate: date,
+    selectedVoucherAddresses,
+  });
+
   // Field reports filtering
   const { visibleReports, dismissReport, resetDismissed } = useFieldReports({
     reports: reportsData?.reports ?? [],
     currentDate: date,
     selectedVoucherAddresses,
+    isImageLoaded,
     maxVisible: 3,
-  });
-
-  // Image preloading for field reports
-  const { resetPreloaded } = useImagePreloader({
-    reports: reportsData?.reports ?? [],
-    currentDate: date,
-    selectedVoucherAddresses,
   });
 
   // Reset dismissed reports and preloaded images when animation restarts from beginning

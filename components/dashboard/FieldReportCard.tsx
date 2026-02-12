@@ -2,7 +2,7 @@
  * Individual field report card with animations
  */
 
-import React from "react";
+import React, { useState } from "react";
 import { CloseIcon } from "@components/icons";
 import type { VisibleReport } from "@/types";
 
@@ -12,6 +12,9 @@ export interface FieldReportCardProps {
 }
 
 export function FieldReportCard({ report, onDismiss }: FieldReportCardProps) {
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [imgError, setImgError] = useState(false);
+
   const handleDismiss = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -26,12 +29,17 @@ export function FieldReportCard({ report, onDismiss }: FieldReportCardProps) {
       className="block w-72 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 overflow-hidden hover:shadow-2xl hover:scale-[1.02] transition-all cursor-pointer"
     >
       {/* Image */}
-      {report.image_url && (
+      {report.image_url && !imgError && (
         <div className="relative h-32 w-full">
+          {!imgLoaded && (
+            <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+          )}
           <img
             src={report.image_url}
             alt={report.title}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+            onLoad={() => setImgLoaded(true)}
+            onError={() => setImgError(true)}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
           <button

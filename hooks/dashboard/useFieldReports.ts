@@ -10,6 +10,7 @@ export interface UseFieldReportsOptions {
   reports: FieldReport[];
   currentDate: number;
   selectedVoucherAddresses: Set<string>;
+  isImageLoaded?: (url: string) => boolean;
   maxVisible?: number;
 }
 
@@ -24,6 +25,7 @@ export function useFieldReports({
   reports,
   currentDate,
   selectedVoucherAddresses,
+  isImageLoaded,
   maxVisible = 3,
 }: UseFieldReportsOptions): UseFieldReportsReturn {
   const [dismissedIds, setDismissedIds] = useState<Set<number>>(new Set());
@@ -53,6 +55,10 @@ export function useFieldReports({
       // Skip future reports
       if (!hasStarted) continue;
 
+      // Skip reports whose image hasn't loaded yet
+      if (isImageLoaded && report.image_url && !isImageLoaded(report.image_url))
+        continue;
+
       // Determine visibility state
       const wasVisible = prevVisibleRef.current.has(report.id);
       let visibility: ReportVisibility;
@@ -73,7 +79,7 @@ export function useFieldReports({
 
     // Limit visible count
     return active.slice(0, maxVisible);
-  }, [reports, currentDate, selectedVoucherAddresses, dismissedIds, maxVisible]);
+  }, [reports, currentDate, selectedVoucherAddresses, dismissedIds, isImageLoaded, maxVisible]);
 
   // Update tracking ref after render
   useEffect(() => {
