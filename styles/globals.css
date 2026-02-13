@@ -14,11 +14,73 @@
   }
 }
 .btn {
-  @apply text-white bg-green-600 px-2 rounded font-semibold;
+  @apply text-white bg-emerald-600 px-2 rounded font-semibold;
 }
 .btn:hover {
-  @apply bg-green-800;
+  @apply bg-emerald-700;
 }
 .btn:disabled {
-  @apply bg-green-800;
+  @apply bg-emerald-800;
+}
+
+/* Shimmer gradient for loading placeholders */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+}
+
+/* Dark glass slider thumb/track for settings sliders */
+.slider-glass {
+  @apply w-full h-3 sm:h-2 rounded-lg appearance-none cursor-pointer;
+  background: rgba(255, 255, 255, 0.1);
+}
+.slider-glass::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #34d399;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+.slider-glass::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #34d399;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+}
+
+/* Visible glowing thumb for the bottom timeline slider */
+.slider-timeline {
+  @apply absolute top-0 bottom-0 bg-transparent rounded-lg appearance-none cursor-pointer;
+  left: -8px;
+  right: -10px;
+}
+.slider-timeline::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+}
+.slider-timeline::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  cursor: pointer;
 }

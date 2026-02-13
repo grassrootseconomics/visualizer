@@ -44,14 +44,14 @@ export function AnimationSection({
   timelineHistogram,
 }: AnimationSectionProps) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-white/10 rounded-lg overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/[0.08] transition-colors"
       >
-        <span className="font-medium text-gray-700">Timeline Animation</span>
+        <span className="font-medium text-gray-200">Timeline Animation</span>
         <ChevronDownIcon
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`w-4 h-4 text-gray-400 transition-transform ${
             expanded ? "rotate-180" : ""
           }`}
         />
@@ -63,8 +63,8 @@ export function AnimationSection({
               <button
                 className={`p-2.5 rounded-md transition-colors ${
                   animate
-                    ? "text-amber-500 hover:text-amber-600 bg-none"
-                    : "text-green-500 hover:text-green-600 bg-none"
+                    ? "text-amber-400 hover:text-amber-300 bg-none"
+                    : "text-emerald-400 hover:text-emerald-300 bg-none"
                 }`}
                 onClick={() => {
                   if (!animate && date >= dateRange.end) {
@@ -82,7 +82,7 @@ export function AnimationSection({
                 )}
               </button>
               <button
-                className="p-2.5 rounded-md transition-colors text-gray-300 hover:text-gray-400"
+                className="p-2.5 rounded-md transition-colors text-gray-500 hover:text-gray-300"
                 onClick={() => {
                   setAnimate(false);
                   setDate(dateRange.start);
@@ -92,15 +92,15 @@ export function AnimationSection({
                 <ResetIcon className="w-5 h-5" />
               </button>
             </div>
-            <span className="text-sm font-medium text-gray-700">
+            <span className="text-sm font-medium text-gray-200">
               {new Date(date).toLocaleDateString()}
             </span>
           </div>
 
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-1">
-              <label className="text-xs text-gray-500">Timeline</label>
-              <span className="text-xs text-gray-400">
+              <label className="text-xs text-gray-400">Timeline</label>
+              <span className="text-xs text-gray-500">
                 {new Date(dateRange.start).toLocaleDateString()} -{" "}
                 {new Date(dateRange.end).toLocaleDateString()}
               </span>
@@ -108,7 +108,7 @@ export function AnimationSection({
 
             {/* Timeline Histogram */}
             {timelineHistogram.length > 0 && (
-              <div className="relative h-12 mb-1 flex items-end gap-px rounded overflow-hidden bg-none">
+              <div className="relative h-12 mb-1 flex items-end gap-px rounded overflow-hidden bg-white/[0.03]">
                 {timelineHistogram.map((bucket, i) => {
                   const isPast = bucket.endTime <= date;
                   const isCurrent =
@@ -123,7 +123,7 @@ export function AnimationSection({
                           ? "#10b981"
                           : isPast
                           ? "#6ee7b7"
-                          : "#d1d5db",
+                          : "rgba(255,255,255,0.15)",
                       }}
                       title={`${bucket.count} transactions`}
                     />
@@ -131,13 +131,14 @@ export function AnimationSection({
                 })}
                 {/* Current position indicator */}
                 <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-emerald-600 pointer-events-none"
+                  className="absolute top-0 bottom-0 w-1 bg-emerald-400 pointer-events-none"
                   style={{
                     left: `${
                       ((date - dateRange.start) /
                         (dateRange.end - dateRange.start)) *
                       100
                     }%`,
+                    boxShadow: "0 0 6px rgba(52,211,153,0.5)",
                   }}
                 />
                 <input
@@ -163,8 +164,8 @@ export function AnimationSection({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs text-gray-500">Animation Speed</label>
-              <span className="text-xs text-gray-700 font-medium">
+              <label className="text-xs text-gray-400">Animation Speed</label>
+              <span className="text-xs text-gray-200 font-medium">
                 {animationSpeed}h/sec
               </span>
             </div>
@@ -174,9 +175,9 @@ export function AnimationSection({
               onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
               type="range"
               value={animationSpeed}
-              className="w-full h-3 sm:h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+              className="slider-glass"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-1">
+            <div className="flex justify-between text-xs text-gray-500 mt-1">
               <span>1h</span>
               <span>1 day</span>
               <span>1 week</span>

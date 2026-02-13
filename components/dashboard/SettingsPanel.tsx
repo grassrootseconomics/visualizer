@@ -118,9 +118,9 @@ export function SettingsPanel({
   lastUpdate,
 }: SettingsPanelProps) {
   return (
-    <div className="w-full sm:w-[360px] z-20 absolute inset-0 sm:inset-auto sm:top-0 sm:right-0 bg-white sm:m-3 sm:rounded-lg shadow-xl overflow-hidden flex flex-col">
+    <div className="w-full sm:w-[360px] z-20 absolute inset-0 sm:inset-auto sm:top-0 sm:right-0 bg-gray-900/85 backdrop-blur-xl border border-white/10 sm:m-3 sm:rounded-lg shadow-xl overflow-hidden flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600">
+      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-600/80 to-emerald-500/60">
         <h1 className="text-white font-semibold text-lg">Settings</h1>
         <CloseIcon
           onClick={onClose}
@@ -196,8 +196,8 @@ export function SettingsPanel({
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 mt-auto">
-        <p className="text-xs text-gray-400 text-center">
+      <div className="px-4 py-3 bg-white/[0.03] border-t border-white/5 mt-auto">
+        <p className="text-xs text-gray-500 text-center">
           Last updated:{" "}
           {lastUpdate
             ? new Date(lastUpdate).toLocaleString()

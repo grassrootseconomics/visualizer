@@ -47,9 +47,9 @@ export function InfoPanel({
   if (!selectedInfo) return null;
 
   return (
-    <div className="absolute top-4 left-4 z-20 w-80 max-w-[calc(100vw-2rem)] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl border border-gray-200 overflow-hidden">
+    <div className="absolute top-4 left-4 z-20 w-80 max-w-[calc(100vw-2rem)] bg-gray-900/85 backdrop-blur-xl rounded-lg shadow-xl border border-white/10 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600">
+      <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-emerald-600/80 to-emerald-500/60">
         <h2 className="text-white font-semibold">
           {selectedInfo.type === "node" ? "Account" : "Transaction"}
         </h2>
@@ -96,19 +96,19 @@ function NodeInfoContent({
     <>
       {/* Node Address */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">Address</label>
+        <label className="text-xs text-gray-400 block mb-1">Address</label>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-sm bg-gray-100 text-gray-500 px-2 py-1.5 rounded font-mono truncate">
+          <code className="flex-1 text-sm bg-white/5 text-gray-300 px-2 py-1.5 rounded font-mono truncate">
             {data.id}
           </code>
           <button
             onClick={() => copyToClipboard(data.id, "address")}
-            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 hover:bg-white/10 rounded transition-colors"
             title="Copy address"
           >
             <CopyIcon
               className={`w-4 h-4 ${
-                copiedField === "address" ? "text-green-500" : "text-gray-500"
+                copiedField === "address" ? "text-emerald-400" : "text-gray-400"
               }`}
             />
           </button>
@@ -117,15 +117,15 @@ function NodeInfoContent({
 
       {/* Transaction count */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">
+        <label className="text-xs text-gray-400 block mb-1">
           Total Transactions
         </label>
-        <p className="text-sm font-medium text-gray-700">{data.value}</p>
+        <p className="text-sm font-medium text-gray-200">{data.value}</p>
       </div>
 
       {/* Vouchers used with details */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">
+        <label className="text-xs text-gray-400 block mb-1">
           Vouchers Used ({Object.keys(data.usedVouchers).length})
         </label>
         <div className="max-h-40 overflow-y-auto space-y-1.5">
@@ -138,18 +138,18 @@ function NodeInfoContent({
               return (
                 <div
                   key={contractAddress}
-                  className="flex items-center justify-between text-sm bg-gray-50 px-2 py-1.5 rounded"
+                  className="flex items-center justify-between text-sm bg-white/5 px-2 py-1.5 rounded"
                 >
-                  <span className="text-gray-700 truncate flex-1">
+                  <span className="text-gray-200 truncate flex-1">
                     {voucher
                       ? `${voucher.token_name} (${voucher.token_symbol})`
                       : contractAddress.slice(0, 10) + "..."}
                   </span>
                   <div className="flex items-center gap-2 ml-2">
-                    <span className="text-xs font-medium text-emerald-600 whitespace-nowrap">
+                    <span className="text-xs font-medium text-emerald-400 whitespace-nowrap">
                       {txCount} tx
                     </span>
-                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
                       {new Date(firstTxDate).toLocaleDateString()}
                     </span>
                   </div>
@@ -164,7 +164,7 @@ function NodeInfoContent({
         href={`https://celoscan.io/address/${data.id}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors text-sm font-medium"
+        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-md transition-colors text-sm font-medium"
       >
         <ExternalLinkIcon className="w-4 h-4" />
         View on Celoscan
@@ -173,7 +173,7 @@ function NodeInfoContent({
         href={`https://sarafu.network/users/${data.id}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors text-sm font-medium"
+        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-md transition-colors text-sm font-medium"
       >
         <ExternalLinkIcon className="w-4 h-4" />
         View on Sarafu Network
@@ -197,27 +197,27 @@ function LinkInfoContent({
     <>
       {/* Token info */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">Token</label>
-        <p className="text-sm font-medium text-gray-700">
+        <label className="text-xs text-gray-400 block mb-1">Token</label>
+        <p className="text-sm font-medium text-gray-200">
           {data.token_name} ({data.token_symbol})
         </p>
       </div>
 
       {/* Contract address */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">Contract</label>
+        <label className="text-xs text-gray-400 block mb-1">Contract</label>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-sm text-gray-500 px-2 py-1.5 rounded font-mono truncate">
+          <code className="flex-1 text-sm text-gray-300 bg-white/5 px-2 py-1.5 rounded font-mono truncate">
             {data.contract_address}
           </code>
           <button
             onClick={() => copyToClipboard(data.contract_address, "contract")}
-            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+            className="p-1.5 hover:bg-white/10 rounded transition-colors"
             title="Copy contract"
           >
             <CopyIcon
               className={`w-4 h-4 ${
-                copiedField === "contract" ? "text-green-500" : "text-gray-500"
+                copiedField === "contract" ? "text-emerald-400" : "text-gray-400"
               }`}
             />
           </button>
@@ -226,19 +226,19 @@ function LinkInfoContent({
 
       {/* Source */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">From</label>
+        <label className="text-xs text-gray-400 block mb-1">From</label>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs text-gray-500 px-2 py-1 rounded font-mono truncate">
+          <code className="flex-1 text-xs text-gray-300 bg-white/5 px-2 py-1 rounded font-mono truncate">
             {data.source}
           </code>
           <button
             onClick={() => copyToClipboard(data.source, "source")}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 hover:bg-white/10 rounded transition-colors"
             title="Copy source"
           >
             <CopyIcon
               className={`w-3 h-3 ${
-                copiedField === "source" ? "text-green-500" : "text-gray-500"
+                copiedField === "source" ? "text-emerald-400" : "text-gray-400"
               }`}
             />
           </button>
@@ -247,19 +247,19 @@ function LinkInfoContent({
 
       {/* Target */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">To</label>
+        <label className="text-xs text-gray-400 block mb-1">To</label>
         <div className="flex items-center gap-2">
-          <code className="flex-1 text-xs text-gray-500 px-2 py-1 rounded font-mono truncate">
+          <code className="flex-1 text-xs text-gray-300 bg-white/5 px-2 py-1 rounded font-mono truncate">
             {data.target}
           </code>
           <button
             onClick={() => copyToClipboard(data.target, "target")}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 hover:bg-white/10 rounded transition-colors"
             title="Copy target"
           >
             <CopyIcon
               className={`w-3 h-3 ${
-                copiedField === "target" ? "text-green-500" : "text-gray-500"
+                copiedField === "target" ? "text-emerald-400" : "text-gray-400"
               }`}
             />
           </button>
@@ -269,14 +269,14 @@ function LinkInfoContent({
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-gray-500 block mb-1">
+          <label className="text-xs text-gray-400 block mb-1">
             Transactions
           </label>
-          <p className="text-sm font-medium text-gray-700">{data.txCount}</p>
+          <p className="text-sm font-medium text-gray-200">{data.txCount}</p>
         </div>
         <div>
-          <label className="text-xs text-gray-500 block mb-1">Total Value</label>
-          <p className="text-sm font-medium text-gray-700">
+          <label className="text-xs text-gray-400 block mb-1">Total Value</label>
+          <p className="text-sm font-medium text-gray-200">
             {data.value.toLocaleString(undefined, {
               maximumFractionDigits: 2,
             })}
@@ -286,10 +286,10 @@ function LinkInfoContent({
 
       {/* Date range */}
       <div>
-        <label className="text-xs text-gray-500 block mb-1">
+        <label className="text-xs text-gray-400 block mb-1">
           Activity Period
         </label>
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-gray-200">
           {new Date(data.dateFirst).toLocaleDateString()} -{" "}
           {new Date(data.date).toLocaleDateString()}
         </p>
@@ -300,7 +300,7 @@ function LinkInfoContent({
         href={`https://sarafu.network/vouchers/${data.contract_address}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-md transition-colors text-sm font-medium"
+        className="flex items-center gap-2 w-full px-3 py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-md transition-colors text-sm font-medium"
       >
         <ExternalLinkIcon className="w-4 h-4" />
         View on Sarafu Network

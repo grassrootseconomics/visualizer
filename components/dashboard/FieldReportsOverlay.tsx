@@ -47,7 +47,7 @@ export function FieldReportsOverlay({
   }
 
   return (
-    <div className="absolute bottom-20 left-0 right-0 z-10 flex justify-center gap-3 px-4 overflow-x-auto pointer-events-none overflow-y-hidden">
+    <div className="absolute bottom-24 left-0 right-0 z-10 flex justify-center gap-3 px-4 overflow-x-auto pointer-events-none overflow-y-hidden">
       <AnimatePresence mode="popLayout">
         {visibleReports.map((report) => (
           <motion.div

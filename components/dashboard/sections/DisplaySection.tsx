@@ -31,14 +31,14 @@ export function DisplaySection({
   setShowReports,
 }: DisplaySectionProps) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-white/10 rounded-lg overflow-hidden">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/[0.08] transition-colors"
       >
-        <span className="font-medium text-gray-700">Display Options</span>
+        <span className="font-medium text-gray-200">Display Options</span>
         <ChevronDownIcon
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`w-4 h-4 text-gray-400 transition-transform ${
             expanded ? "rotate-180" : ""
           }`}
         />
@@ -46,15 +46,15 @@ export function DisplaySection({
       {expanded && (
         <div className="p-3 sm:p-4 space-y-4">
           <div>
-            <label className="text-xs text-gray-500 mb-2 block">
+            <label className="text-xs text-gray-400 mb-2 block">
               Graph View
             </label>
             <div className="flex gap-2">
               <button
                 className={`flex-1 px-4 py-2.5 sm:py-2 rounded-md font-medium transition-colors ${
                   graphType === "2D"
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white/5 text-gray-400 hover:bg-white/10"
                 }`}
                 onClick={() => setGraphType("2D")}
               >
@@ -63,8 +63,8 @@ export function DisplaySection({
               <button
                 className={`flex-1 px-4 py-2.5 sm:py-2 rounded-md font-medium transition-colors ${
                   graphType === "3D"
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white/5 text-gray-400 hover:bg-white/10"
                 }`}
                 onClick={() => setGraphType("3D")}
               >
@@ -79,13 +79,13 @@ export function DisplaySection({
                 type="checkbox"
                 checked={showRecentOnly}
                 onChange={(e) => setShowRecentOnly(e.target.checked)}
-                className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                className="w-4 h-4 text-emerald-500 border-white/20 rounded focus:ring-emerald-500 bg-white/5 cursor-pointer"
               />
               <div>
-                <span className="text-sm text-gray-700 font-medium">
+                <span className="text-sm text-gray-200 font-medium">
                   Show recent activity only
                 </span>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Only show nodes and links active in the last 2 months
                 </p>
               </div>
@@ -98,13 +98,13 @@ export function DisplaySection({
                 type="checkbox"
                 checked={showTimelineBar}
                 onChange={(e) => setShowTimelineBar(e.target.checked)}
-                className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                className="w-4 h-4 text-emerald-500 border-white/20 rounded focus:ring-emerald-500 bg-white/5 cursor-pointer"
               />
               <div>
-                <span className="text-sm text-gray-700 font-medium">
+                <span className="text-sm text-gray-200 font-medium">
                   Show timeline bar
                 </span>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Display timeline controls at the bottom of the screen
                 </p>
               </div>
@@ -117,13 +117,13 @@ export function DisplaySection({
                 type="checkbox"
                 checked={showReports}
                 onChange={(e) => setShowReports(e.target.checked)}
-                className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                className="w-4 h-4 text-emerald-500 border-white/20 rounded focus:ring-emerald-500 bg-white/5 cursor-pointer"
               />
               <div>
-                <span className="text-sm text-gray-700 font-medium">
+                <span className="text-sm text-gray-200 font-medium">
                   Show field reports
                 </span>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-400">
                   Display approved field reports during animation
                 </p>
               </div>

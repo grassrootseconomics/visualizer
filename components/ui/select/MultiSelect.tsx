@@ -6,7 +6,7 @@ import React from "react";
 
 const Selector = () => (
   <svg
-    className="h-5 w-5 text-gray-400"
+    className="h-5 w-5 text-gray-500"
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 20 20"
     fill="currentColor"
@@ -157,11 +157,11 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
           type="button"
           onClick={() => !disabled && setIsOpen(!isOpen)}
           disabled={disabled}
-          className={`cursor-default relative w-full rounded-md border border-gray-300 bg-white pl-3 pr-10 py-2 text-left transition ease-in-out duration-150 ${
-            disabled ? "bg-gray-100 cursor-not-allowed opacity-60" : ""
+          className={`cursor-default relative w-full rounded-md border border-white/10 bg-white/5 pl-3 pr-10 py-2 text-left transition ease-in-out duration-150 ${
+            disabled ? "opacity-60 cursor-not-allowed" : ""
           }`}
         >
-          <span className="block truncate text-black">
+          <span className="block truncate text-gray-200">
             {selected.length === options.length
               ? "All"
               : `${selected.length} Selected`}
@@ -173,17 +173,17 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
       </span>
 
       {isOpen && (
-        <div className="absolute z-10 w-full mt-1 bg-white rounded-md shadow-lg mb-11">
-          <div className="rounded-md ring-1 ring-black ring-opacity-5">
+        <div className="absolute z-10 w-full mt-1 bg-gray-900/95 backdrop-blur-xl rounded-md shadow-lg border border-white/10 mb-11">
+          <div className="rounded-md">
             {/* Search Input */}
-            <div className="p-2 border-b border-gray-200">
+            <div className="p-2 border-b border-white/10">
               <input
                 ref={searchInputRef}
                 type="text"
                 placeholder="Search vouchers..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent text-black"
+                className="w-full px-3 py-2 text-sm border border-white/10 rounded-md bg-white/5 text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-transparent"
               />
             </div>
             <ul className="py-1 overflow-auto text-base max-h-56 focus:outline-none sm:text-sm">
@@ -198,7 +198,7 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
                     <li
                       key={optionToKey(option)}
                       onClick={() => toggleOption(option)}
-                      className="text-gray-900 cursor-pointer select-none relative py-2 pl-3 pr-9 hover:text-white hover:bg-green-600"
+                      className="text-gray-200 cursor-pointer select-none relative py-2 pl-3 pr-9 hover:text-white hover:bg-emerald-600/60"
                     >
                       <div className="flex items-center">
                         <span
@@ -209,7 +209,7 @@ export function MultiSelect<T>(props: MultiSelectProps<T>) {
                           {optionToLabel(option)}
                         </span>
                         {optionSelected && (
-                          <span className="text-green-600 absolute inset-y-0 right-0 flex items-center mr-3 pl-1.5">
+                          <span className="text-emerald-400 absolute inset-y-0 right-0 flex items-center mr-3 pl-1.5">
                             <Selected />
                           </span>
                         )}

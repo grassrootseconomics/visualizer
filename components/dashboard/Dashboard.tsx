@@ -406,8 +406,13 @@ export function Dashboard() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="w-screen h-[100vh] flex items-center justify-center">
-        <div className="text-2xl text-gray-600">Loading graph data...</div>
+      <div className="w-screen h-[100vh] flex items-center justify-center bg-[#0a0a0a]">
+        <div className="relative flex items-center justify-center">
+          <div className="absolute w-24 h-24 rounded-full border border-emerald-500/20 animate-pulse-ring" />
+          <div className="absolute w-16 h-16 rounded-full border border-emerald-500/30 animate-pulse-ring" style={{ animationDelay: "0.5s" }} />
+          <div className="absolute w-8 h-8 rounded-full border border-emerald-500/40 animate-pulse-ring" style={{ animationDelay: "1s" }} />
+          <div className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse" />
+        </div>
       </div>
     );
   }
@@ -415,10 +420,15 @@ export function Dashboard() {
   // Error state
   if (error) {
     return (
-      <div className="w-screen h-[100vh] flex items-center justify-center">
+      <div className="w-screen h-[100vh] flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="text-2xl text-red-600 mb-4">Error loading data</div>
-          <div className="text-gray-600">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-500/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div className="text-xl text-red-400 mb-2">Error loading data</div>
+          <div className="text-gray-500">
             {error.message || "Failed to load graph data"}
           </div>
         </div>
@@ -429,9 +439,15 @@ export function Dashboard() {
   // No data state
   if (!data) {
     return (
-      <div className="w-screen h-[100vh] flex items-center justify-center">
+      <div className="w-screen h-[100vh] flex items-center justify-center bg-[#0a0a0a]">
         <div className="text-center">
-          <div className="text-2xl text-gray-600 mb-4">No data available</div>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+            <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125" />
+            </svg>
+          </div>
+          <div className="text-xl text-gray-400 mb-2">No data available</div>
+          <div className="text-gray-600">Check your connection and try again</div>
         </div>
       </div>
     );
@@ -441,7 +457,7 @@ export function Dashboard() {
     <div className="w-screen h-[100vh] overflow-hidden my-auto">
       {/* Top controls */}
       <div
-        className={`justify-center items-center absolute gap-4 md:gap-0 right-0 flex z-20 transition-all ${
+        className={`justify-center items-center absolute gap-2 right-3 flex z-20 transition-all ${
           showTimelineBar ? "top-2" : "bottom-0"
         }`}
       >

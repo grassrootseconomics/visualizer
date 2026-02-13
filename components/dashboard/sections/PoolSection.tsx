@@ -37,14 +37,14 @@ export function PoolSection({
   }, [selectedPools]);
 
   return (
-    <div className="border border-gray-200 rounded-lg">
+    <div className="border border-white/10 rounded-lg">
       <button
         onClick={onToggle}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/[0.08] transition-colors"
       >
-        <span className="font-medium text-gray-700">Filter by Pool</span>
+        <span className="font-medium text-gray-200">Filter by Pool</span>
         <ChevronDownIcon
-          className={`w-4 h-4 text-gray-500 transition-transform ${
+          className={`w-4 h-4 text-gray-400 transition-transform ${
             expanded ? "rotate-180" : ""
           }`}
         />
@@ -63,14 +63,14 @@ export function PoolSection({
           />
           <div className="flex gap-2">
             <button
-              className="flex-1 px-3 py-2 sm:py-1.5 text-sm text-green-600 border border-green-200 rounded-md hover:bg-green-50 active:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-3 py-2 sm:py-1.5 text-sm text-emerald-400 border border-emerald-500/30 rounded-md hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => onSelectPools(pools)}
               disabled={isLoading}
             >
               Select All
             </button>
             <button
-              className="flex-1 px-3 py-2 sm:py-1.5 text-sm text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50 active:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-3 py-2 sm:py-1.5 text-sm text-gray-400 border border-white/10 rounded-md hover:bg-white/5 active:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => onSelectPools([])}
               disabled={isLoading}
             >
@@ -78,7 +78,7 @@ export function PoolSection({
             </button>
           </div>
           {selectedPools.length > 0 && (
-            <div className="text-sm text-gray-500">
+            <div className="text-sm text-gray-400">
               {totalTokens} token{totalTokens !== 1 ? "s" : ""} in{" "}
               {selectedPools.length} pool{selectedPools.length !== 1 ? "s" : ""}
             </div>

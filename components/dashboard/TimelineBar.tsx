@@ -26,8 +26,8 @@ export function TimelineBar({
   if (timelineHistogram.length === 0) return null;
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 z-10 bg-none">
-      <div className="px-3 sm:px-4 py-2 sm:py-0">
+    <div className="absolute bottom-0 left-0 right-0 z-10">
+      <div className="bg-gray-900/70 backdrop-blur-xl rounded-xl border border-white/10 mx-2 mb-2 px-3 sm:px-4 py-2 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-4 mx-auto">
           {/* Timeline with Histogram */}
           <div className="flex-1 min-w-0">
@@ -36,7 +36,7 @@ export function TimelineBar({
               <span className="hidden sm:inline">
                 {new Date(dateRange.start).toLocaleDateString()}
               </span>
-              <span className="font-medium text-gray-200">
+              <span className="font-medium text-emerald-400">
                 {new Date(date).toLocaleDateString()}
               </span>
               <span className="hidden sm:inline">
@@ -45,7 +45,7 @@ export function TimelineBar({
             </div>
 
             {/* Histogram */}
-            <div className="relative h-8 sm:h-10 flex items-end gap-px rounded overflow-hidden bg-none">
+            <div className="relative h-8 sm:h-10 flex items-end gap-px rounded overflow-hidden bg-white/[0.03]">
               {timelineHistogram.map((bucket, i) => {
                 const isPast = bucket.endTime <= date;
                 const isCurrent =
@@ -60,7 +60,7 @@ export function TimelineBar({
                         ? "#10b981"
                         : isPast
                         ? "#6ee7b7"
-                        : "#d1d5db",
+                        : "rgba(255,255,255,0.12)",
                     }}
                     title={`${bucket.count} transactions`}
                     onClick={() => setDate(bucket.startTime)}
@@ -69,13 +69,14 @@ export function TimelineBar({
               })}
               {/* Current position indicator */}
               <div
-                className="absolute top-0 bottom-0 w-0.5 bg-emerald-600 pointer-events-none"
+                className="absolute top-0 bottom-0 w-1 bg-emerald-400 pointer-events-none"
                 style={{
                   left: `${
                     ((date - dateRange.start) /
                       (dateRange.end - dateRange.start)) *
                     100
                   }%`,
+                  boxShadow: "0 0 6px rgba(52,211,153,0.5)",
                 }}
               />
               {/* Slider */}
@@ -85,16 +86,7 @@ export function TimelineBar({
                 onChange={(e) => setDate(parseInt(e.target.value))}
                 type="range"
                 value={date}
-                className="absolute top-0 left-[-8px] right-[-10px] bottom-0 bg-transparent rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none
-                  [&::-webkit-slider-thumb]:h-5
-                  [&::-webkit-slider-thumb]:w-5
-                  [&::-webkit-slider-thumb]:rounded-full
-                  [&::-webkit-slider-thumb]:bg-transparent
-                  [&::-moz-range-thumb]:appearance-none
-                  [&::-moz-range-thumb]:h-5
-                  [&::-moz-range-thumb]:w-5
-                  [&::-moz-range-thumb]:rounded-full
-                  [&::-moz-range-thumb]:bg-transparent"
+                className="slider-timeline"
               />
             </div>
           </div>
@@ -110,7 +102,7 @@ export function TimelineBar({
               onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
               type="range"
               value={animationSpeed}
-              className="w-20 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-500"
+              className="slider-glass"
             />
             <span className="text-xs text-gray-400 font-medium w-12">
               {animationSpeed}h/s
