@@ -12,6 +12,7 @@ import {
   DisplaySection,
   PhysicsSection,
 } from "./sections";
+import type { GraphType } from "./sections/DisplaySection";
 import type { TimelineBucket } from "./sections";
 import type { Pool } from "@/types";
 import type { Voucher } from "@/types/voucher";
@@ -60,8 +61,8 @@ export interface SettingsPanelProps {
   timelineHistogram: TimelineBucket[];
 
   // Display
-  graphType: "2D" | "3D";
-  setGraphType: (type: "2D" | "3D") => void;
+  graphType: GraphType;
+  setGraphType: (type: GraphType) => void;
   showRecentOnly: boolean;
   setShowRecentOnly: (show: boolean) => void;
   showTimelineBar: boolean;
@@ -183,16 +184,18 @@ export function SettingsPanel({
           setShowReports={setShowReports}
         />
 
-        {/* Physics Section */}
-        <PhysicsSection
-          expanded={expandedSections.physics}
-          onToggle={() => toggleSection("physics")}
-          inputs={physicsInputs}
-          setChargeStrengthInput={setChargeStrengthInput}
-          setLinkDistanceInput={setLinkDistanceInput}
-          setCenterGravityInput={setCenterGravityInput}
-          resetToDefaults={resetPhysicsToDefaults}
-        />
+        {/* Physics Section (hidden for Globe view - no force simulation) */}
+        {graphType !== "Globe" && (
+          <PhysicsSection
+            expanded={expandedSections.physics}
+            onToggle={() => toggleSection("physics")}
+            inputs={physicsInputs}
+            setChargeStrengthInput={setChargeStrengthInput}
+            setLinkDistanceInput={setLinkDistanceInput}
+            setCenterGravityInput={setCenterGravityInput}
+            resetToDefaults={resetPhysicsToDefaults}
+          />
+        )}
       </div>
 
       {/* Footer */}

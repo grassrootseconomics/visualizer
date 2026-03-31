@@ -9,6 +9,7 @@ import useSWR from "swr";
 import { GearIcon, PauseIcon, PlayIcon } from "@components/icons";
 import { NetworkGraph2d } from "@components/network-graph/network-graph-2d";
 import { NetworkGraph3d } from "@components/network-graph/network-graph-3d";
+import { NetworkGlobe } from "@components/network-graph/network-globe";
 
 import { FieldReportsOverlay } from "./FieldReportsOverlay";
 import { InfoPanel, type SelectedInfo } from "./InfoPanel";
@@ -19,7 +20,9 @@ import { TimelineBar } from "./TimelineBar";
 import { useFieldReports, useImagePreloader } from "@/hooks/dashboard";
 import type { DataResponse } from "@/pages/api/data";
 import type { FieldReportsResponse, Pool, PoolsResponse } from "@/types";
+import type { GlobeDataResponse, GlobePoint, GlobeArc } from "@/types/globe";
 import type { Voucher } from "@/types/voucher";
+import type { GraphType } from "./sections/DisplaySection";
 
 // Fetcher function for SWR
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -63,7 +66,17 @@ export function Dashboard() {
 
   // Panel states
   const [optionsOpen, setOptionsOpen] = React.useState(false);
-  const [graphType, setGraphType] = React.useState<"2D" | "3D">("2D");
+  const [graphType, setGraphType] = React.useState<GraphType>("2D");
+
+  // Fetch globe geo data (only when Globe view is active)
+  const { data: geoData } = useSWR<GlobeDataResponse>(
+    graphType === "Globe" ? "/api/geo" : null,
+    fetcher,
+    {
+      refreshInterval: 5 * 60 * 1000,
+      revalidateOnFocus: false,
+    }
+  );
   const [showTimelineBar, setShowTimelineBar] = React.useState(true);
 
   // Pool filtering
@@ -391,6 +404,36 @@ export function Dashboard() {
     });
   }, []);
 
+  const handleGlobePointClick = React.useCallback((point: GlobePoint) => {
+    if (point.type === "account") {
+      setSelectedInfo({
+        type: "node",
+        data: {
+          id: point.id,
+          value: point.value,
+          usedVouchers: {},
+        },
+      });
+    }
+  }, []);
+
+  const handleGlobeArcClick = React.useCallback((arc: GlobeArc) => {
+    setSelectedInfo({
+      type: "link",
+      data: {
+        source: arc.sourceId,
+        target: arc.targetId,
+        token_name: arc.tokenName,
+        token_symbol: arc.tokenSymbol,
+        contract_address: arc.contractAddress,
+        txCount: arc.txCount,
+        value: arc.value,
+        date: arc.date,
+        dateFirst: arc.dateFirst,
+      },
+    });
+  }, []);
+
   const copyToClipboard = React.useCallback((text: string, field: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
@@ -522,8 +565,25 @@ export function Dashboard() {
         />
       )}
 
-      {/* Graph */}
-      {graphData && graphType === "2D" ? (
+      {/* Graph / Globe */}
+      {graphType === "Globe" ? (
+        <NetworkGlobe
+          globeData={
+            geoData?.globeData ?? {
+              points: [],
+              arcs: [],
+              unmappedAccountCount: 0,
+              totalAccountCount: 0,
+            }
+          }
+          animate={animate}
+          selectedVoucherAddresses={selectedVoucherAddresses}
+          currentDate={date}
+          showRecentOnly={showRecentOnly}
+          onPointClick={handleGlobePointClick}
+          onArcClick={handleGlobeArcClick}
+        />
+      ) : graphType === "2D" ? (
         <NetworkGraph2d
           animate={animate}
           graphData={graphData}

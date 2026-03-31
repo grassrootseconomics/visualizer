@@ -38,3 +38,13 @@ export type {
 
 // Pool types
 export type { Pool, PoolsResponse } from "./pool";
+
+// Globe types
+export type {
+  GeoPoint,
+  GlobePoint,
+  GlobeArc,
+  GlobeRing,
+  GlobeData,
+  GlobeDataResponse,
+} from "./globe";
