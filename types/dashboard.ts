@@ -31,4 +31,5 @@ export interface ExpandedSections {
   animation: boolean;
   display: boolean;
   physics: boolean;
+  globe?: boolean;
 }

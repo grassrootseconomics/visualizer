@@ -5,11 +5,13 @@
 import React from "react";
 import { ChevronDownIcon } from "@components/icons";
 
+export type GraphType = "2D" | "3D" | "Globe";
+
 export interface DisplaySectionProps {
   expanded: boolean;
   onToggle: () => void;
-  graphType: "2D" | "3D";
-  setGraphType: (type: "2D" | "3D") => void;
+  graphType: GraphType;
+  setGraphType: (type: GraphType) => void;
   showRecentOnly: boolean;
   setShowRecentOnly: (show: boolean) => void;
   showTimelineBar: boolean;
@@ -50,26 +52,19 @@ export function DisplaySection({
               Graph View
             </label>
             <div className="flex gap-2">
-              <button
-                className={`flex-1 px-4 py-2.5 sm:py-2 rounded-md font-medium transition-colors ${
-                  graphType === "2D"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white/5 text-gray-400 hover:bg-white/10"
-                }`}
-                onClick={() => setGraphType("2D")}
-              >
-                2D View
-              </button>
-              <button
-                className={`flex-1 px-4 py-2.5 sm:py-2 rounded-md font-medium transition-colors ${
-                  graphType === "3D"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-white/5 text-gray-400 hover:bg-white/10"
-                }`}
-                onClick={() => setGraphType("3D")}
-              >
-                3D View
-              </button>
+              {(["2D", "3D", "Globe"] as const).map((type) => (
+                <button
+                  key={type}
+                  className={`flex-1 px-4 py-2.5 sm:py-2 rounded-md font-medium transition-colors ${
+                    graphType === type
+                      ? "bg-emerald-500 text-white"
+                      : "bg-white/5 text-gray-400 hover:bg-white/10"
+                  }`}
+                  onClick={() => setGraphType(type)}
+                >
+                  {type === "Globe" ? "Globe" : `${type} View`}
+                </button>
+              ))}
             </div>
           </div>
 
