@@ -3,7 +3,7 @@
  */
 
 export const CACHE_KEY = "graph-data-3";
-export const CACHE_TTL_SECONDS = 86400 * 30; // 30 days
+export const CACHE_TTL_SECONDS = 3600 * 6; // 6 hours
 
 // Field reports cache
 export const REPORTS_CACHE_KEY = "field-reports-1";
