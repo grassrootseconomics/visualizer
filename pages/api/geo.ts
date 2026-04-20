@@ -37,6 +37,7 @@ export default async function handler(
 }
 
 export const config = {
+  maxDuration: 60,
   api: {
     responseLimit: false,
   },
