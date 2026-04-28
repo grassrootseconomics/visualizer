@@ -3,7 +3,11 @@
  */
 
 import { federatedDB } from "@db/db";
-import { FAUCET_ADDRESS, ONE_YEAR_MS } from "@/config/constants";
+import {
+  CELO_TOKEN_ADDRESS,
+  FAUCET_ADDRESS,
+  ONE_YEAR_MS,
+} from "@/config/constants";
 
 /**
  * Fetch transactions from the database
@@ -31,6 +35,11 @@ export function fetchTransactions() {
     .where("chain_data.tx.success", "=", true)
     .where("chain_data.token_transfer.sender_address", "!=", FAUCET_ADDRESS)
     .where("chain_data.token_transfer.recipient_address", "!=", FAUCET_ADDRESS)
+    .where(
+      "chain_data.token_transfer.contract_address",
+      "!=",
+      CELO_TOKEN_ADDRESS
+    )
     .where(
       "chain_data.tx.date_block",
       ">=",
