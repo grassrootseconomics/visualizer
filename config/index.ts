@@ -5,6 +5,7 @@
 // Application constants
 export {
   FAUCET_ADDRESS,
+  CELO_TOKEN_ADDRESS,
   CELOSCAN_BASE_URL,
   SARAFU_NETWORK_BASE_URL,
   TWO_MONTHS_MS,
